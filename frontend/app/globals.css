@@ -1,0 +1,47 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: dark --default;
+}
+
+@plugin "daisyui/theme" {
+  name: "dark";
+  color-scheme: dark;
+  --color-primary: #f3df1f;
+  --color-primary-content: #14140a;
+  --color-secondary: #ffffff;
+  --color-secondary-content: #14140a;
+  --color-accent: #f3df1f;
+  --color-accent-content: #14140a;
+  --color-neutral: #2e2e2e;
+  --color-neutral-content: #f5f5f5;
+  --color-base-100: #0a0a0a;
+  --color-base-200: #1a1a1a;
+  --color-base-300: #2e2e2e;
+  --color-base-content: #f5f5f5;
+  --color-info: #f3df1f;
+  --color-info-content: #14140a;
+  --color-success: #8bc34a;
+  --color-success-content: #0a1400;
+  --color-warning: #f3df1f;
+  --color-warning-content: #14140a;
+  --color-error: #ff5252;
+  --color-error-content: #1a0000;
+  --radius-box: 1.5rem;
+  --radius-btn: 9999px;
+  --radius-badge: 9999px;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-geist-sans), sans-serif;
+  letter-spacing: -0.3px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-outfit), var(--font-geist-sans), sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}

@@ -1,0 +1,244 @@
+basePath: /api/v1
+definitions:
+  dto.CreateHouseholdRequest:
+    properties:
+      name:
+        minLength: 2
+        type: string
+    required:
+    - name
+    type: object
+  dto.HouseholdResponse:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  dto.InvitationResponse:
+    properties:
+      code:
+        type: string
+      expires_at:
+        type: string
+    type: object
+  dto.JoinHouseholdRequest:
+    properties:
+      code:
+        type: string
+    required:
+    - code
+    type: object
+  dto.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  dto.RegisterRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        minLength: 8
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+  response.Envelope:
+    properties:
+      data: {}
+      error:
+        type: string
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+info:
+  contact: {}
+  description: API untuk manajemen keuangan keluarga
+  title: Family Finance API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Login dengan email dan password, return JWT token
+      parameters:
+      - description: Login request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Envelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Envelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Envelope'
+      summary: Login user
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Membuat user baru dengan email dan password
+      parameters:
+      - description: Register request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.Envelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Envelope'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.Envelope'
+      summary: Register user baru
+      tags:
+      - auth
+  /households:
+    post:
+      consumes:
+      - application/json
+      description: User membuat rumah tangga baru
+      parameters:
+      - description: Create household request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateHouseholdRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.HouseholdResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Envelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Envelope'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.Envelope'
+      security:
+      - BearerAuth: []
+      summary: Buat rumah tangga baru
+      tags:
+      - households
+  /households/invitations:
+    post:
+      description: Membuat kode undangan untuk mengajak user lain bergabung
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.InvitationResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Envelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Envelope'
+      security:
+      - BearerAuth: []
+      summary: Buat kode undangan rumah tangga
+      tags:
+      - households
+  /households/join:
+    post:
+      consumes:
+      - application/json
+      description: User bergabung ke rumah tangga menggunakan kode undangan
+      parameters:
+      - description: Join household request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.JoinHouseholdRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.HouseholdResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Envelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Envelope'
+      security:
+      - BearerAuth: []
+      summary: Join rumah tangga dengan kode undangan
+      tags:
+      - households
+securityDefinitions:
+  BearerAuth:
+    description: Bearer token
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
