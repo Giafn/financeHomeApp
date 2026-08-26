@@ -7,6 +7,7 @@ import { Loader2, Plus, Receipt, CheckCircle2, Clock, AlertTriangle, X } from 'l
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { FormField } from '@/components/ui/FormField';
 import { Alert } from '@/components/ui/Alert';
 import { BottomNav } from '@/components/ui/BottomNav';
@@ -323,14 +324,10 @@ export default function BillsPage() {
               </FormField>
 
               <FormField label="Nominal per Periode">
-                <Input
-                  type="number"
-                  placeholder="500000"
-                  required
-                  step="0.01"
-                  min="0.01"
+                <CurrencyInput
+                  placeholder="500.000"
                   value={formAmount}
-                  onChange={(e) => setFormAmount(e.target.value)}
+                  onChange={setFormAmount}
                   disabled={updating}
                 />
               </FormField>
@@ -402,13 +399,9 @@ export default function BillsPage() {
               </FormField>
 
               <FormField label="Nominal">
-                <Input
-                  type="number"
-                  required
-                  step="0.01"
-                  min="0.01"
+                <CurrencyInput
                   value={payAmount}
-                  onChange={(e) => setPayAmount(e.target.value)}
+                  onChange={setPayAmount}
                   disabled={updating}
                 />
               </FormField>

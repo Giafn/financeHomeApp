@@ -6,7 +6,8 @@ import { apiCall, ApiError } from '@/lib/api';
 import { Loader2, PartyPopper, Trash2, PiggyBank } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Input, Select } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Input';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { FormField } from '@/components/ui/FormField';
 import { Alert } from '@/components/ui/Alert';
 import { TopBar } from '@/components/ui/TopBar';
@@ -265,14 +266,10 @@ export default function GoalDetailPage({ params }: { params: Promise<{ id: strin
               </FormField>
 
               <FormField label="Nominal">
-                <Input
-                  type="number"
-                  placeholder="500000"
-                  required
-                  step="0.01"
-                  min="0.01"
+                <CurrencyInput
+                  placeholder="500.000"
                   value={saveAmount}
-                  onChange={(e) => setSaveAmount(e.target.value)}
+                  onChange={setSaveAmount}
                   disabled={updating}
                   autoFocus
                 />

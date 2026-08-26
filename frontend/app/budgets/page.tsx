@@ -7,6 +7,7 @@ import { Loader2, ChevronLeft, ChevronRight, Plus, Pencil, Trash2 } from 'lucide
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { FormField } from '@/components/ui/FormField';
 import { Alert } from '@/components/ui/Alert';
 import { BottomNav } from '@/components/ui/BottomNav';
@@ -315,14 +316,10 @@ export default function BudgetsPage() {
               </FormField>
 
               <FormField label="Nominal Budget">
-                <Input
-                  type="number"
-                  placeholder="1000000"
-                  required
-                  step="0.01"
-                  min="0.01"
+                <CurrencyInput
+                  placeholder="1.000.000"
                   value={formAmount}
-                  onChange={(e) => setFormAmount(e.target.value)}
+                  onChange={setFormAmount}
                   disabled={updating}
                   autoFocus
                 />

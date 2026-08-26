@@ -7,6 +7,7 @@ import { Loader2, Paperclip, X } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { FormField } from '@/components/ui/FormField';
 import { Alert } from '@/components/ui/Alert';
 import { TopBar } from '@/components/ui/TopBar';
@@ -265,14 +266,10 @@ export default function NewTransactionPage() {
             )}
 
             <FormField label="Nominal">
-              <Input
-                type="number"
-                placeholder="50000"
-                required
-                step="0.01"
-                min="0.01"
+              <CurrencyInput
+                placeholder="50.000"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={setAmount}
                 disabled={submitting}
                 autoFocus
               />

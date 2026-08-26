@@ -7,6 +7,7 @@ import { Loader2, Plus, Banknote, Smartphone, Wallet, MoreVertical } from 'lucid
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { FormField } from '@/components/ui/FormField';
 import { Alert } from '@/components/ui/Alert';
 import { BottomNav } from '@/components/ui/BottomNav';
@@ -277,13 +278,10 @@ export default function AccountsPage() {
               </FormField>
 
               <FormField label="Saldo Awal">
-                <Input
-                  type="number"
-                  placeholder="5000000"
-                  required
-                  step="0.01"
+                <CurrencyInput
+                  placeholder="5.000.000"
                   value={formData.initial_balance}
-                  onChange={(e) => setFormData({ ...formData, initial_balance: e.target.value })}
+                  onChange={(v) => setFormData({ ...formData, initial_balance: v })}
                   disabled={updating}
                 />
               </FormField>

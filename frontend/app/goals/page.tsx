@@ -8,6 +8,7 @@ import { Loader2, Plus, PartyPopper, Target } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { FormField } from '@/components/ui/FormField';
 import { Alert } from '@/components/ui/Alert';
 import { BottomNav } from '@/components/ui/BottomNav';
@@ -209,14 +210,10 @@ export default function GoalsPage() {
               </FormField>
 
               <FormField label="Target Nominal">
-                <Input
-                  type="number"
-                  placeholder="50000000"
-                  required
-                  step="0.01"
-                  min="0.01"
+                <CurrencyInput
+                  placeholder="50.000.000"
                   value={formTargetAmount}
-                  onChange={(e) => setFormTargetAmount(e.target.value)}
+                  onChange={setFormTargetAmount}
                   disabled={updating}
                 />
               </FormField>
