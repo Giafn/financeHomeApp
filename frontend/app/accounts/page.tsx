@@ -161,7 +161,7 @@ export default function AccountsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-base-100 pb-24 sm:pb-6">
+    <div className="min-h-screen bg-base-100 pb-24">
       {/* Topbar */}
       <div className="border-b border-base-300 bg-base-200 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">

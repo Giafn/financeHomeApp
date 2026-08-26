@@ -7,9 +7,9 @@ import (
 	"math/big"
 	"time"
 
-	"family-finance-api/internal/entity"
-	"family-finance-api/internal/pkg/apperror"
-	"family-finance-api/internal/repository"
+	"homeapp/internal/entity"
+	"homeapp/internal/pkg/apperror"
+	"homeapp/internal/repository"
 
 	"github.com/google/uuid"
 )
@@ -20,13 +20,20 @@ const invitationCodeCharset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // tanpa karakt
 
 type HouseholdUsecase struct {
 	householdRepo repository.HouseholdRepository
+	categoryRepo  repository.CategoryRepository
+	txManager     repository.TxManager
 }
 
-func NewHouseholdUsecase(householdRepo repository.HouseholdRepository) *HouseholdUsecase {
-	return &HouseholdUsecase{householdRepo: householdRepo}
+func NewHouseholdUsecase(householdRepo repository.HouseholdRepository, categoryRepo repository.CategoryRepository, txManager repository.TxManager) *HouseholdUsecase {
+	return &HouseholdUsecase{
+		householdRepo: householdRepo,
+		categoryRepo:  categoryRepo,
+		txManager:     txManager,
+	}
 }
 
-// CreateHousehold membuat rumah tangga baru dan menjadikan user sebagai owner.
+// CreateHousehold membuat rumah tangga baru, menjadikan user sebagai owner, dan
+// men-seed kategori default — semua dalam satu transaction supaya atomic.
 func (u *HouseholdUsecase) CreateHousehold(ctx context.Context, userID uuid.UUID, name string) (*entity.Household, error) {
 	if _, err := u.householdRepo.FindMemberByUserID(ctx, userID); err == nil {
 		return nil, apperror.ErrAlreadyInHousehold
@@ -35,17 +42,26 @@ func (u *HouseholdUsecase) CreateHousehold(ctx context.Context, userID uuid.UUID
 	}
 
 	household := &entity.Household{Name: name, CreatedBy: userID}
-	if err := u.householdRepo.Create(ctx, household); err != nil {
-		return nil, err
-	}
 
-	member := &entity.HouseholdMember{
-		HouseholdID: household.ID,
-		UserID:      userID,
-		Role:        entity.RoleOwner,
-		JoinedAt:    time.Now(),
-	}
-	if err := u.householdRepo.CreateMember(ctx, member); err != nil {
+	err := u.txManager.WithinTx(ctx, func(ctx context.Context) error {
+		if err := u.householdRepo.Create(ctx, household); err != nil {
+			return err
+		}
+
+		member := &entity.HouseholdMember{
+			HouseholdID: household.ID,
+			UserID:      userID,
+			Role:        entity.RoleOwner,
+			JoinedAt:    time.Now(),
+		}
+		if err := u.householdRepo.CreateMember(ctx, member); err != nil {
+			return err
+		}
+
+		categoryUsecase := NewCategoryUsecase(u.categoryRepo)
+		return categoryUsecase.SeedDefaultCategories(ctx, household.ID, userID)
+	})
+	if err != nil {
 		return nil, err
 	}
 

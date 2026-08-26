@@ -3,14 +3,14 @@ package handler
 import (
 	"errors"
 
-	"family-finance-api/internal/delivery/http/dto"
-	"family-finance-api/internal/delivery/http/middleware"
-	"family-finance-api/internal/pkg/apperror"
-	"family-finance-api/internal/pkg/response"
-	"family-finance-api/internal/usecase"
+	"homeapp/internal/delivery/http/dto"
+	"homeapp/internal/delivery/http/middleware"
+	"homeapp/internal/pkg/apperror"
+	"homeapp/internal/pkg/response"
+	"homeapp/internal/usecase"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 )
 
@@ -36,11 +36,11 @@ func NewHouseholdHandler(householdUsecase *usecase.HouseholdUsecase) *HouseholdH
 // @Failure 401 {object} response.Envelope
 // @Failure 409 {object} response.Envelope
 // @Router /households [post]
-func (h *HouseholdHandler) Create(c *fiber.Ctx) error {
+func (h *HouseholdHandler) Create(c fiber.Ctx) error {
 	userID := c.Locals(middleware.LocalsUserID).(uuid.UUID)
 
 	var req dto.CreateHouseholdRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "payload tidak valid")
 	}
 	if err := h.validate.Struct(req); err != nil {
@@ -72,11 +72,11 @@ func (h *HouseholdHandler) Create(c *fiber.Ctx) error {
 // @Failure 400 {object} response.Envelope
 // @Failure 401 {object} response.Envelope
 // @Router /households/join [post]
-func (h *HouseholdHandler) Join(c *fiber.Ctx) error {
+func (h *HouseholdHandler) Join(c fiber.Ctx) error {
 	userID := c.Locals(middleware.LocalsUserID).(uuid.UUID)
 
 	var req dto.JoinHouseholdRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "payload tidak valid")
 	}
 	if err := h.validate.Struct(req); err != nil {
@@ -106,7 +106,7 @@ func (h *HouseholdHandler) Join(c *fiber.Ctx) error {
 // @Failure 401 {object} response.Envelope
 // @Failure 403 {object} response.Envelope
 // @Router /households/invitations [post]
-func (h *HouseholdHandler) CreateInvitation(c *fiber.Ctx) error {
+func (h *HouseholdHandler) CreateInvitation(c fiber.Ctx) error {
 	userID := c.Locals(middleware.LocalsUserID).(uuid.UUID)
 
 	invitation, err := h.householdUsecase.CreateInvitation(c.Context(), userID)
@@ -131,7 +131,7 @@ func (h *HouseholdHandler) CreateInvitation(c *fiber.Ctx) error {
 // @Success 200 {object} response.Envelope
 // @Failure 401 {object} response.Envelope
 // @Router /households/me [get]
-func (h *HouseholdHandler) GetDetail(c *fiber.Ctx) error {
+func (h *HouseholdHandler) GetDetail(c fiber.Ctx) error {
 	userID := c.Locals(middleware.LocalsUserID).(uuid.UUID)
 
 	detail, err := h.householdUsecase.GetHouseholdDetail(c.Context(), userID)
@@ -154,7 +154,7 @@ func (h *HouseholdHandler) GetDetail(c *fiber.Ctx) error {
 // @Failure 400 {object} response.Envelope
 // @Failure 403 {object} response.Envelope
 // @Router /households/{id} [patch]
-func (h *HouseholdHandler) UpdateName(c *fiber.Ctx) error {
+func (h *HouseholdHandler) UpdateName(c fiber.Ctx) error {
 	userID := c.Locals(middleware.LocalsUserID).(uuid.UUID)
 
 	householdIDStr := c.Params("id")
@@ -164,7 +164,7 @@ func (h *HouseholdHandler) UpdateName(c *fiber.Ctx) error {
 	}
 
 	var req dto.UpdateHouseholdRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "payload tidak valid")
 	}
 	if err := h.validate.Struct(req); err != nil {
@@ -189,7 +189,7 @@ func (h *HouseholdHandler) UpdateName(c *fiber.Ctx) error {
 // @Success 200 {object} response.Envelope
 // @Failure 401 {object} response.Envelope
 // @Router /households/members [get]
-func (h *HouseholdHandler) GetMembers(c *fiber.Ctx) error {
+func (h *HouseholdHandler) GetMembers(c fiber.Ctx) error {
 	userID := c.Locals(middleware.LocalsUserID).(uuid.UUID)
 
 	members, err := h.householdUsecase.GetMembers(c.Context(), userID)
@@ -210,7 +210,7 @@ func (h *HouseholdHandler) GetMembers(c *fiber.Ctx) error {
 // @Failure 400 {object} response.Envelope
 // @Failure 403 {object} response.Envelope
 // @Router /households/members [delete]
-func (h *HouseholdHandler) RemoveMember(c *fiber.Ctx) error {
+func (h *HouseholdHandler) RemoveMember(c fiber.Ctx) error {
 	userID := c.Locals(middleware.LocalsUserID).(uuid.UUID)
 
 	targetUserIDStr := c.Query("targetUserID")
@@ -244,7 +244,7 @@ func (h *HouseholdHandler) RemoveMember(c *fiber.Ctx) error {
 // @Success 200 {object} response.Envelope
 // @Failure 401 {object} response.Envelope
 // @Router /households/invitations/active [get]
-func (h *HouseholdHandler) GetActiveInvitation(c *fiber.Ctx) error {
+func (h *HouseholdHandler) GetActiveInvitation(c fiber.Ctx) error {
 	userID := c.Locals(middleware.LocalsUserID).(uuid.UUID)
 
 	invitation, err := h.householdUsecase.GetActiveInvitation(c.Context(), userID)

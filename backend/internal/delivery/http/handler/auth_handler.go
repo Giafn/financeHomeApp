@@ -3,13 +3,13 @@ package handler
 import (
 	"errors"
 
-	"family-finance-api/internal/delivery/http/dto"
-	"family-finance-api/internal/pkg/apperror"
-	"family-finance-api/internal/pkg/response"
-	"family-finance-api/internal/usecase"
+	"homeapp/internal/delivery/http/dto"
+	"homeapp/internal/pkg/apperror"
+	"homeapp/internal/pkg/response"
+	"homeapp/internal/usecase"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type AuthHandler struct {
@@ -32,9 +32,9 @@ func NewAuthHandler(authUsecase *usecase.AuthUsecase) *AuthHandler {
 // @Failure 400 {object} response.Envelope
 // @Failure 409 {object} response.Envelope
 // @Router /auth/register [post]
-func (h *AuthHandler) Register(c *fiber.Ctx) error {
+func (h *AuthHandler) Register(c fiber.Ctx) error {
 	var req dto.RegisterRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "payload tidak valid")
 	}
 	if err := h.validate.Struct(req); err != nil {
@@ -68,9 +68,9 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 // @Failure 400 {object} response.Envelope
 // @Failure 401 {object} response.Envelope
 // @Router /auth/login [post]
-func (h *AuthHandler) Login(c *fiber.Ctx) error {
+func (h *AuthHandler) Login(c fiber.Ctx) error {
 	var req dto.LoginRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "payload tidak valid")
 	}
 	if err := h.validate.Struct(req); err != nil {

@@ -3,10 +3,10 @@ package middleware
 import (
 	"strings"
 
-	"family-finance-api/internal/pkg/jwt"
-	"family-finance-api/internal/pkg/response"
+	"homeapp/internal/pkg/jwt"
+	"homeapp/internal/pkg/response"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 const LocalsUserID = "user_id"
@@ -15,7 +15,7 @@ const LocalsEmail = "email"
 // JWTProtected memvalidasi header "Authorization: Bearer <token>" dan menyimpan
 // user_id & email hasil parse ke c.Locals() supaya bisa dipakai handler berikutnya.
 func JWTProtected(jwtManager *jwt.Manager) fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
 			return response.Error(c, fiber.StatusUnauthorized, "token otorisasi tidak ditemukan")

@@ -53,4 +53,35 @@ export async function apiCall<T>(
   return json.data as T;
 }
 
+// downloadFile fetches a binary response (PDF/Excel export, dst) and triggers a browser
+// download — apiCall() assumes JSON envelope, tidak cocok untuk endpoint file.
+export async function downloadFile(endpoint: string): Promise<void> {
+  const url = `${API_URL}${endpoint}`;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+  const response = await fetch(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const json = await response.json().catch(() => ({}));
+    throw new ApiError(response.status, json.error || 'Gagal mengunduh file');
+  }
+
+  const disposition = response.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename="(.+)"/);
+  const filename = match ? match[1] : 'download';
+
+  const blob = await response.blob();
+  const blobUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(blobUrl);
+}
+
 export { ApiError };

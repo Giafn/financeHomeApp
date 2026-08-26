@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"family-finance-api/internal/entity"
-	"family-finance-api/internal/pkg/apperror"
+	"homeapp/internal/entity"
+	"homeapp/internal/pkg/apperror"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -21,7 +21,7 @@ func NewHouseholdRepository(db *gorm.DB) *householdRepository {
 }
 
 func (r *householdRepository) Create(ctx context.Context, household *entity.Household) error {
-	return r.db.WithContext(ctx).Create(household).Error
+	return dbOrTx(ctx, r.db).WithContext(ctx).Create(household).Error
 }
 
 func (r *householdRepository) FindByID(ctx context.Context, id uuid.UUID) (*entity.Household, error) {
@@ -37,7 +37,7 @@ func (r *householdRepository) FindByID(ctx context.Context, id uuid.UUID) (*enti
 }
 
 func (r *householdRepository) CreateMember(ctx context.Context, member *entity.HouseholdMember) error {
-	return r.db.WithContext(ctx).Create(member).Error
+	return dbOrTx(ctx, r.db).WithContext(ctx).Create(member).Error
 }
 
 func (r *householdRepository) FindMemberByUserID(ctx context.Context, userID uuid.UUID) (*entity.HouseholdMember, error) {

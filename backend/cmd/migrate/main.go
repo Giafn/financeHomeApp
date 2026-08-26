@@ -16,9 +16,9 @@ import (
 	"log"
 	"os"
 
-	"family-finance-api/internal/config"
-	"family-finance-api/internal/database"
-	"family-finance-api/internal/database/migration"
+	"homeapp/internal/config"
+	"homeapp/internal/database"
+	"homeapp/internal/database/migration"
 )
 
 func main() {

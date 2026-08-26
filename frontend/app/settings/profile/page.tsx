@@ -148,7 +148,7 @@ export default function ProfileSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-base-100 pb-24 sm:pb-6">
+    <div className="min-h-screen bg-base-100 pb-24">
       <TopBar title="Pengaturan" subtitle="Kelola profil & keamanan" backHref="/dashboard" />
 
       <div className="max-w-2xl mx-auto p-4 sm:p-6">

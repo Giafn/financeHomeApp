@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"family-finance-api/internal/entity"
+	"homeapp/internal/entity"
 
 	"github.com/google/uuid"
 )

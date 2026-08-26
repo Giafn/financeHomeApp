@@ -3,14 +3,14 @@ package handler
 import (
 	"errors"
 
-	"family-finance-api/internal/delivery/http/dto"
-	"family-finance-api/internal/delivery/http/middleware"
-	"family-finance-api/internal/pkg/apperror"
-	"family-finance-api/internal/pkg/response"
-	"family-finance-api/internal/usecase"
+	"homeapp/internal/delivery/http/dto"
+	"homeapp/internal/delivery/http/middleware"
+	"homeapp/internal/pkg/apperror"
+	"homeapp/internal/pkg/response"
+	"homeapp/internal/usecase"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 )
 
@@ -34,11 +34,11 @@ func NewAccountHandler(accountUsecase *usecase.AccountUsecase) *AccountHandler {
 // @Failure 400 {object} response.Envelope
 // @Failure 401 {object} response.Envelope
 // @Router /accounts [post]
-func (h *AccountHandler) Create(c *fiber.Ctx) error {
+func (h *AccountHandler) Create(c fiber.Ctx) error {
 	userID := c.Locals(middleware.LocalsUserID).(uuid.UUID)
 
 	var req dto.CreateAccountRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "payload tidak valid")
 	}
 	if err := h.validate.Struct(req); err != nil {
@@ -69,10 +69,10 @@ func (h *AccountHandler) Create(c *fiber.Ctx) error {
 // @Success 200 {object} response.Envelope
 // @Failure 401 {object} response.Envelope
 // @Router /accounts [get]
-func (h *AccountHandler) List(c *fiber.Ctx) error {
+func (h *AccountHandler) List(c fiber.Ctx) error {
 	userID := c.Locals(middleware.LocalsUserID).(uuid.UUID)
 
-	includeInactive := c.QueryBool("include_inactive", false)
+	includeInactive := c.Query("include_inactive", "false") == "true"
 
 	accounts, err := h.accountUsecase.ListAccounts(c.Context(), userID, includeInactive)
 	if err != nil {
@@ -92,7 +92,7 @@ func (h *AccountHandler) List(c *fiber.Ctx) error {
 // @Failure 404 {object} response.Envelope
 // @Failure 401 {object} response.Envelope
 // @Router /accounts/{id} [get]
-func (h *AccountHandler) GetDetail(c *fiber.Ctx) error {
+func (h *AccountHandler) GetDetail(c fiber.Ctx) error {
 	userID := c.Locals(middleware.LocalsUserID).(uuid.UUID)
 
 	accountIDStr := c.Params("id")
@@ -132,7 +132,7 @@ func (h *AccountHandler) GetDetail(c *fiber.Ctx) error {
 // @Failure 404 {object} response.Envelope
 // @Failure 401 {object} response.Envelope
 // @Router /accounts/{id} [patch]
-func (h *AccountHandler) Update(c *fiber.Ctx) error {
+func (h *AccountHandler) Update(c fiber.Ctx) error {
 	userID := c.Locals(middleware.LocalsUserID).(uuid.UUID)
 
 	accountIDStr := c.Params("id")
@@ -142,7 +142,7 @@ func (h *AccountHandler) Update(c *fiber.Ctx) error {
 	}
 
 	var req dto.UpdateAccountRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "payload tidak valid")
 	}
 	if err := h.validate.Struct(req); err != nil {

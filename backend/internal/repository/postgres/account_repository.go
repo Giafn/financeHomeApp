@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"family-finance-api/internal/entity"
-	"family-finance-api/internal/pkg/apperror"
+	"homeapp/internal/entity"
+	"homeapp/internal/pkg/apperror"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -50,9 +50,11 @@ func (r *accountRepository) Update(ctx context.Context, account *entity.Account)
 	return r.db.WithContext(ctx).Save(account).Error
 }
 
-// CalculateBalance menghitung current_balance = initial_balance + SUM(transaksi terkait).
-// Untuk Phase 04, belum ada transaksi, jadi hasilnya = initial_balance.
-// Implementasi penuh di Phase 06 saat ada tabel transaction.
+// CalculateBalance menghitung current_balance = initial_balance
+//   + SUM(income masuk ke akun ini)
+//   - SUM(expense keluar dari akun ini)
+//   - SUM(transfer keluar dari akun ini)
+//   + SUM(transfer masuk ke akun ini sebagai destination)
 func (r *accountRepository) CalculateBalance(ctx context.Context, accountID uuid.UUID) (float64, error) {
 	var acc entity.Account
 	err := r.db.WithContext(ctx).First(&acc, "id = ?", accountID).Error
@@ -63,7 +65,20 @@ func (r *accountRepository) CalculateBalance(ctx context.Context, accountID uuid
 		return 0, err
 	}
 
-	// Sementara Phase 04: return initial_balance (transaksi belum ada).
-	// TODO Phase 06: tambah SUM(transaksi) ke formula ini
-	return acc.InitialBalance, nil
+	var delta float64
+	err = r.db.WithContext(ctx).Raw(`
+		SELECT
+			COALESCE(SUM(CASE WHEN type = 'income' AND account_id = ? THEN amount ELSE 0 END), 0)
+			- COALESCE(SUM(CASE WHEN type = 'expense' AND account_id = ? THEN amount ELSE 0 END), 0)
+			- COALESCE(SUM(CASE WHEN type = 'transfer' AND account_id = ? THEN amount ELSE 0 END), 0)
+			+ COALESCE(SUM(CASE WHEN type = 'transfer' AND destination_account_id = ? THEN amount ELSE 0 END), 0)
+		FROM transactions
+		WHERE deleted_at IS NULL
+		  AND (account_id = ? OR destination_account_id = ?)
+	`, accountID, accountID, accountID, accountID, accountID, accountID).Scan(&delta).Error
+	if err != nil {
+		return 0, err
+	}
+
+	return acc.InitialBalance + delta, nil
 }

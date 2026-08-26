@@ -3,14 +3,14 @@ package handler
 import (
 	"errors"
 
-	"family-finance-api/internal/delivery/http/dto"
-	"family-finance-api/internal/delivery/http/middleware"
-	"family-finance-api/internal/pkg/apperror"
-	"family-finance-api/internal/pkg/response"
-	"family-finance-api/internal/usecase"
+	"homeapp/internal/delivery/http/dto"
+	"homeapp/internal/delivery/http/middleware"
+	"homeapp/internal/pkg/apperror"
+	"homeapp/internal/pkg/response"
+	"homeapp/internal/usecase"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 )
 
@@ -33,7 +33,7 @@ func NewUserHandler(userUsecase *usecase.UserUsecase) *UserHandler {
 // @Success 200 {object} response.Envelope
 // @Failure 401 {object} response.Envelope
 // @Router /users/me [get]
-func (h *UserHandler) GetProfile(c *fiber.Ctx) error {
+func (h *UserHandler) GetProfile(c fiber.Ctx) error {
 	userID := c.Locals(middleware.LocalsUserID).(uuid.UUID)
 
 	profile, err := h.userUsecase.GetProfile(c.Context(), userID)
@@ -71,11 +71,11 @@ func (h *UserHandler) GetProfile(c *fiber.Ctx) error {
 // @Failure 400 {object} response.Envelope
 // @Failure 401 {object} response.Envelope
 // @Router /users/me [patch]
-func (h *UserHandler) UpdateProfile(c *fiber.Ctx) error {
+func (h *UserHandler) UpdateProfile(c fiber.Ctx) error {
 	userID := c.Locals(middleware.LocalsUserID).(uuid.UUID)
 
 	var req dto.UpdateProfileRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "payload tidak valid")
 	}
 	if err := h.validate.Struct(req); err != nil {
@@ -120,11 +120,11 @@ func (h *UserHandler) UpdateProfile(c *fiber.Ctx) error {
 // @Failure 400 {object} response.Envelope
 // @Failure 401 {object} response.Envelope
 // @Router /users/me/change-password [post]
-func (h *UserHandler) ChangePassword(c *fiber.Ctx) error {
+func (h *UserHandler) ChangePassword(c fiber.Ctx) error {
 	userID := c.Locals(middleware.LocalsUserID).(uuid.UUID)
 
 	var req dto.ChangePasswordRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "payload tidak valid")
 	}
 	if err := h.validate.Struct(req); err != nil {

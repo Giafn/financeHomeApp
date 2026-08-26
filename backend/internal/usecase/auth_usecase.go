@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 
-	"family-finance-api/internal/entity"
-	"family-finance-api/internal/pkg/apperror"
-	"family-finance-api/internal/pkg/hash"
-	"family-finance-api/internal/pkg/jwt"
-	"family-finance-api/internal/repository"
+	"homeapp/internal/entity"
+	"homeapp/internal/pkg/apperror"
+	"homeapp/internal/pkg/hash"
+	"homeapp/internal/pkg/jwt"
+	"homeapp/internal/repository"
 )
 
 type AuthUsecase struct {

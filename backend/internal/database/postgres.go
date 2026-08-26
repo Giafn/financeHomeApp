@@ -1,7 +1,7 @@
 package database
 
 import (
-	"family-finance-api/internal/config"
+	"homeapp/internal/config"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"

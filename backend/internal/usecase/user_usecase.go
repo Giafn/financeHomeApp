@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"family-finance-api/internal/pkg/apperror"
-	"family-finance-api/internal/pkg/hash"
-	"family-finance-api/internal/repository"
+	"homeapp/internal/pkg/apperror"
+	"homeapp/internal/pkg/hash"
+	"homeapp/internal/repository"
 
 	"github.com/google/uuid"
 )

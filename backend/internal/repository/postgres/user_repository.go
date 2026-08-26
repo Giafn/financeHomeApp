@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"family-finance-api/internal/entity"
-	"family-finance-api/internal/pkg/apperror"
+	"homeapp/internal/entity"
+	"homeapp/internal/pkg/apperror"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"

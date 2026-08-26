@@ -11,6 +11,9 @@ type NotificationType string
 const (
 	NotificationBillReminder NotificationType = "bill_reminder"
 	NotificationBudgetAlert  NotificationType = "budget_alert"
+	// NotificationTest dipakai job "test-notification-guard" (Phase 07) untuk
+	// membuktikan mailer+dedup guard bekerja end-to-end tanpa menyentuh tipe produksi.
+	NotificationTest NotificationType = "test"
 )
 
 // NotificationLog mencatat email yang sudah terkirim untuk mencegah duplikasi

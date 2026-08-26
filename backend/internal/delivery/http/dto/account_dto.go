@@ -3,7 +3,7 @@ package dto
 type CreateAccountRequest struct {
 	Name           string  `json:"name" validate:"required,min=2"`
 	Type           string  `json:"type" validate:"required,oneof=bank ewallet cash other"`
-	InitialBalance float64 `json:"initial_balance" validate:"required"`
+	InitialBalance float64 `json:"initial_balance" validate:"gte=0"`
 }
 
 type UpdateAccountRequest struct {
