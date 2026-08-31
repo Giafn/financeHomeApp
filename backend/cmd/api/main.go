@@ -11,6 +11,7 @@ package main
 import (
 	"context"
 	"log"
+	"strings"
 
 	"homeapp/internal/config"
 	"homeapp/internal/database"
@@ -121,7 +122,7 @@ func main() {
 		corsConfig.AllowOrigins = []string{"*"}
 		corsConfig.AllowCredentials = false
 	} else {
-		corsConfig.AllowOrigins = []string{cfg.CORSAllowOrigins}
+		corsConfig.AllowOrigins = strings.Split(cfg.CORSAllowOrigins, ",")
 		corsConfig.AllowCredentials = true
 	}
 

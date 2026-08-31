@@ -18,3 +18,9 @@ db.md
 fe.md
 specs.md
 .phases/
+
+
+backend/logs/
+frontend/logs/
+logs/
+startPostgres.sh
