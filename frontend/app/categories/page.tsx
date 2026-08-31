@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
 import { FormField } from '@/components/ui/FormField';
 import { Alert } from '@/components/ui/Alert';
-import { BottomNav } from '@/components/ui/BottomNav';
+import { AppShell } from '@/components/ui/AppShell';
 
 interface Category {
   id: string;
@@ -178,10 +178,10 @@ export default function CategoriesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-base-100 pb-24">
+    <AppShell active="/categories">
       {/* Topbar */}
       <div className="border-b border-base-300 bg-base-200 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <h1 className="text-2xl sm:text-3xl font-bold text-base-content">Kategori</h1>
           <Button onClick={() => {
             setFormData({ name: '', type: activeTab, icon: '', color: '#4CAF50' });
@@ -193,7 +193,7 @@ export default function CategoriesPage() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto p-4 sm:p-6">
+      <div className="max-w-4xl mx-auto p-4 sm:p-6">
         {error && <Alert type="error" message={error} />}
         {success && <Alert type="success" message={success} />}
 
@@ -381,7 +381,6 @@ export default function CategoriesPage() {
         </div>
       )}
 
-      <BottomNav active="/categories" />
-    </div>
+      </AppShell>
   );
 }

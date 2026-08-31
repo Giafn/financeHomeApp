@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/Input';
 import { FormField } from '@/components/ui/FormField';
 import { Alert } from '@/components/ui/Alert';
 import { TopBar } from '@/components/ui/TopBar';
-import { BottomNav } from '@/components/ui/BottomNav';
+import { AppShell } from '@/components/ui/AppShell';
 
 interface UserProfile {
   id: string;
@@ -148,10 +148,10 @@ export default function ProfileSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-base-100 pb-24">
+    <AppShell active="/settings/profile">
       <TopBar title="Pengaturan" subtitle="Kelola profil & keamanan" backHref="/dashboard" />
 
-      <div className="max-w-2xl mx-auto p-4 sm:p-6">
+      <div className="max-w-4xl mx-auto p-4 sm:p-6">
         {/* Household link */}
         <div className="mb-6 sm:mb-8">
           <Link href="/settings/household">
@@ -281,7 +281,6 @@ export default function ProfileSettingsPage() {
         </div>
       </div>
 
-      <BottomNav active="/settings/profile" />
-    </div>
+      </AppShell>
   );
 }

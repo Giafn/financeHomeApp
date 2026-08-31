@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/Input';
 import { FormField } from '@/components/ui/FormField';
 import { Alert } from '@/components/ui/Alert';
 import { TopBar } from '@/components/ui/TopBar';
-import { BottomNav } from '@/components/ui/BottomNav';
+import { AppShell } from '@/components/ui/AppShell';
 
 interface HouseholdDetail {
   id: string;
@@ -189,10 +189,10 @@ export default function HouseholdSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-base-100 pb-24">
+    <AppShell active="/settings/household">
       <TopBar title="Rumah Tangga" subtitle="Kelola anggota & undangan" backHref="/settings/profile" />
 
-      <div className="max-w-2xl mx-auto p-4 sm:p-6">
+      <div className="max-w-4xl mx-auto p-4 sm:p-6">
         {error && <Alert type="error" message={error} />}
         {success && <Alert type="success" message={success} />}
 
@@ -359,7 +359,6 @@ export default function HouseholdSettingsPage() {
         </div>
       </div>
 
-      <BottomNav active="/settings/profile" />
-    </div>
+      </AppShell>
   );
 }

@@ -20,6 +20,8 @@ const HUB_ITEMS = [
   { href: '/settings/profile', label: 'Profil Saya', icon: Settings },
 ] as const;
 
+export { NAV_ITEMS, HUB_ITEMS };
+
 function isHubRoute(active: string) {
   return HUB_ITEMS.some((item) => active === item.href || active.startsWith(item.href + '/'));
 }
@@ -36,15 +38,15 @@ export function BottomNav({ active }: BottomNavProps) {
     <>
       <Link
         href="/transactions/new"
-        className="sm:hidden fixed bottom-20 right-4 z-50 inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary text-primary-content shadow-lg active:scale-95 transition-transform"
+        className="lg:hidden fixed bottom-20 right-4 z-50 inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary text-primary-content shadow-lg active:scale-95 transition-transform"
         aria-label="Tambah transaksi"
       >
         <Plus className="w-6 h-6" />
       </Link>
 
-      {/* Hub sheet — Kategori/Goals/Tagihan/Rumah Tangga/Profil, reachable from anywhere */}
+      {/* Hub sheet — Kategori/Goals/Tagihan/Rumah Tangga/Profil, only on mobile */}
       {hubOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={() => setHubOpen(false)}>
+        <div className="lg:hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={() => setHubOpen(false)}>
           <div className="absolute inset-0 bg-black/60" />
           <div
             className="relative w-full sm:max-w-sm bg-base-200 border border-base-300 rounded-t-3xl sm:rounded-3xl p-4 pb-6 sm:pb-4"
@@ -82,7 +84,7 @@ export function BottomNav({ active }: BottomNavProps) {
         </div>
       )}
 
-      <div className="fixed bottom-0 left-0 right-0 border-t border-base-300 bg-base-200 z-40">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 border-t border-base-300 bg-base-200 z-40">
         <div className="max-w-md sm:max-w-2xl mx-auto flex items-center justify-around h-16">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;

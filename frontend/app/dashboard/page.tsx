@@ -14,7 +14,7 @@ import { Input, Select } from '@/components/ui/Input';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { FormField } from '@/components/ui/FormField';
 import { Alert } from '@/components/ui/Alert';
-import { BottomNav } from '@/components/ui/BottomNav';
+import { AppShell } from '@/components/ui/AppShell';
 
 interface UserProfile {
   id: string;
@@ -226,10 +226,10 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-base-100">
+    <AppShell active="/dashboard">
       {/* Topbar */}
       <div className="border-b border-base-300 sticky top-0 z-50 bg-base-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex-1">
             <h1 className="text-xl sm:text-2xl font-bold text-base-content">Family Finance</h1>
             {profile?.household && (
@@ -276,7 +276,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-24">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {error && <Alert type="error" message={error} />}
         {success && <Alert type="success" message={success} />}
 
@@ -560,7 +560,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <BottomNav active="/dashboard" />
-    </div>
+      </AppShell>
   );
 }

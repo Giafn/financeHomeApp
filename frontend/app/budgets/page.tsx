@@ -10,7 +10,7 @@ import { Input, Select } from '@/components/ui/Input';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { FormField } from '@/components/ui/FormField';
 import { Alert } from '@/components/ui/Alert';
-import { BottomNav } from '@/components/ui/BottomNav';
+import { AppShell } from '@/components/ui/AppShell';
 
 interface Budget {
   id: string;
@@ -186,7 +186,7 @@ export default function BudgetsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-base-100 pb-24">
+    <AppShell active="/budgets">
       <div className="border-b border-base-300 bg-base-200 sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <h1 className="text-2xl sm:text-3xl font-bold text-base-content">Budget</h1>
@@ -338,7 +338,6 @@ export default function BudgetsPage() {
         </div>
       )}
 
-      <BottomNav active="/budgets" />
-    </div>
+      </AppShell>
   );
 }

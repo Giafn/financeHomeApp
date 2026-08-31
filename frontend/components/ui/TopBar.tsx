@@ -12,7 +12,7 @@ interface TopBarProps {
 export function TopBar({ title, subtitle, backHref, action }: TopBarProps) {
   return (
     <div className="sticky top-0 z-40 bg-base-100/90 backdrop-blur border-b border-base-300">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-4">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-4">
         {backHref && (
           <Link
             href={backHref}

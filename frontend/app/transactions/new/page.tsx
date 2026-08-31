@@ -11,6 +11,7 @@ import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { FormField } from '@/components/ui/FormField';
 import { Alert } from '@/components/ui/Alert';
 import { TopBar } from '@/components/ui/TopBar';
+import { AppShell } from '@/components/ui/AppShell';
 
 interface Account {
   id: string;
@@ -204,10 +205,10 @@ export default function NewTransactionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-base-100 pb-24">
+    <AppShell active="/transactions">
       <TopBar title="Transaksi Baru" subtitle="Catat pemasukan, pengeluaran, atau transfer" backHref="/transactions" />
 
-      <div className="max-w-2xl mx-auto p-4 sm:p-6">
+      <div className="max-w-4xl mx-auto p-4 sm:p-6">
         {error && <Alert type="error" message={error} />}
 
         <Card>
@@ -347,6 +348,6 @@ export default function NewTransactionPage() {
           </form>
         </Card>
       </div>
-    </div>
+    </AppShell>
   );
 }
