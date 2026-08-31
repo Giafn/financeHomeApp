@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"log"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 	"homeapp/internal/delivery/http/dto"
@@ -73,6 +75,7 @@ func (h *UploadHandler) UploadLocal(c fiber.Ctx) error {
 	}
 
 	if _, err := h.localStore.SaveKey(key, body); err != nil {
+		log.Printf("gagal menyimpan file upload: key=%s err=%v", key, err)
 		return response.Error(c, fiber.StatusInternalServerError, "Gagal menyimpan file")
 	}
 

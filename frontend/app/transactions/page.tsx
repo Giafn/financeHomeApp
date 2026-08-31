@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiCall, ApiError } from '@/lib/api';
-import { Loader2, Plus, ArrowDownCircle, ArrowUpCircle, ArrowLeftRight, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { Loader2, Plus, ArrowDownCircle, ArrowUpCircle, ArrowLeftRight, ChevronLeft, ChevronRight, Trash2, X, Image as ImageIcon } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Input';
@@ -20,6 +20,7 @@ interface TransactionItem {
   description?: string | null;
   transaction_date: string;
   created_by_name: string;
+  attachment_url?: string | null;
 }
 
 interface Account {
@@ -47,6 +48,7 @@ export default function TransactionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<TransactionItem | null>(null);
 
   const [items, setItems] = useState<TransactionItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -209,19 +211,24 @@ export default function TransactionsPage() {
               {items.map((tx) => (
                 <Card key={tx.id} className="!p-4">
                   <div className="flex items-center gap-3">
-                    {typeIcon(tx.type)}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-base-content truncate">
-                        {tx.description || tx.category_name || (tx.type === 'transfer' ? 'Transfer' : 'Transaksi')}
+                    <button
+                      onClick={() => setSelected(tx)}
+                      className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                    >
+                      {typeIcon(tx.type)}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-base-content truncate">
+                          {tx.description || tx.category_name || (tx.type === 'transfer' ? 'Transfer' : 'Transaksi')}
+                        </p>
+                        <p className="text-xs text-base-content/60">
+                          {tx.account_name} · {new Date(tx.transaction_date).toLocaleDateString('id-ID')} · {tx.created_by_name}
+                        </p>
+                      </div>
+                      <p className={`font-semibold whitespace-nowrap ${amountClass(tx.type)}`}>
+                        {amountPrefix(tx.type)}
+                        {formatCurrency(tx.amount)}
                       </p>
-                      <p className="text-xs text-base-content/60">
-                        {tx.account_name} · {new Date(tx.transaction_date).toLocaleDateString('id-ID')} · {tx.created_by_name}
-                      </p>
-                    </div>
-                    <p className={`font-semibold whitespace-nowrap ${amountClass(tx.type)}`}>
-                      {amountPrefix(tx.type)}
-                      {formatCurrency(tx.amount)}
-                    </p>
+                    </button>
                     <button
                       onClick={() => handleDelete(tx.id)}
                       disabled={deletingId === tx.id}
@@ -265,6 +272,102 @@ export default function TransactionsPage() {
           </>
         )}
       </div>
+
+      {/* Detail Modal */}
+      {selected && (
+        <div
+          className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-4"
+          onClick={() => setSelected(null)}
+        >
+          <Card
+            className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl"
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-2">
+                {typeIcon(selected.type)}
+                <h2 className="text-xl sm:text-2xl font-bold text-base-content">
+                  Detail Transaksi
+                </h2>
+              </div>
+              <button
+                onClick={() => setSelected(null)}
+                className="inline-flex items-center justify-center w-8 h-8 rounded-full text-base-content/50 hover:text-base-content hover:bg-base-300 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <div>
+                <p className="text-sm text-base-content/60">Tipe</p>
+                <p className="font-medium text-base-content capitalize">
+                  {selected.type === 'income'
+                    ? 'Pemasukan'
+                    : selected.type === 'expense'
+                      ? 'Pengeluaran'
+                      : 'Transfer'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-base-content/60">Akun</p>
+                <p className="font-medium text-base-content">{selected.account_name}</p>
+              </div>
+              {selected.category_name && (
+                <div>
+                  <p className="text-sm text-base-content/60">Kategori</p>
+                  <p className="font-medium text-base-content">{selected.category_name}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-sm text-base-content/60">Jumlah</p>
+                <p className={`text-2xl font-bold ${amountClass(selected.type)}`}>
+                  {amountPrefix(selected.type)}
+                  {formatCurrency(selected.amount)}
+                </p>
+              </div>
+              {selected.description && (
+                <div>
+                  <p className="text-sm text-base-content/60">Deskripsi</p>
+                  <p className="font-medium text-base-content">{selected.description}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-sm text-base-content/60">Tanggal</p>
+                <p className="font-medium text-base-content">
+                  {new Date(selected.transaction_date).toLocaleDateString('id-ID', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-base-content/60">Dicatat oleh</p>
+                <p className="font-medium text-base-content">{selected.created_by_name}</p>
+              </div>
+
+              {selected.attachment_url ? (
+                <div>
+                  <p className="text-sm text-base-content/60 mb-2">Bukti Pembayaran</p>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={selected.attachment_url}
+                    alt="Bukti transaksi"
+                    className="w-full rounded-xl object-contain bg-base-200 max-h-80"
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-sm text-base-content/40 py-2">
+                  <ImageIcon className="w-4 h-4" />
+                  Tidak ada bukti
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
 
       </AppShell>
   );

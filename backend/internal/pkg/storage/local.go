@@ -103,9 +103,11 @@ func sanitizeFilename(name string) string {
 	name = strings.Map(func(r rune) rune {
 		switch {
 		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9',
-			r == '-', r == '_', r == '.', r == ' ':
+			r == '-', r == '_', r == '.':
 			return r
 		default:
+			// Ganti spasi & karakter lain dengan '_' supaya key tetap valid
+			// (validKey menolak spasi). Mencegah 500 saat upload nama file ber-spasi.
 			return '_'
 		}
 	}, name)
