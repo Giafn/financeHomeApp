@@ -4,8 +4,10 @@ import (
 	"homeapp/internal/delivery/http/handler"
 	"homeapp/internal/delivery/http/middleware"
 	"homeapp/internal/pkg/jwt"
+	"homeapp/internal/pkg/storage"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/static"
 )
 
 // Handlers mengumpulkan semua HTTP handler yang di-wiring dari main.go.
@@ -25,12 +27,30 @@ type Handlers struct {
 	Report      *handler.ReportHandler
 }
 
-func RegisterRoutes(app *fiber.App, h *Handlers, jwtManager *jwt.Manager, isProduction bool) {
+func RegisterRoutes(app *fiber.App, h *Handlers, jwtManager *jwt.Manager, isProduction bool, localStore *storage.LocalStore) {
+	// Saat penyimpanan lokal aktif, sajikan file lampiran lewat route statis /uploads/*
+	// (public — file_url dari upload harus bisa dibuka browser/lampiran tanpa autentikasi).
+	if localStore != nil {
+		if dir, err := localStore.DirAbs(); err == nil {
+			// Endpoint PUT untuk menyimpan file ke penyimpanan LOKAL (driver=local).
+			// Public (bukan JWT) supaya klien bisa upload langsung seperti presigned URL S3 —
+			// keamanan terletak pada key acak (UUID) yang tidak bisa ditebak.
+			// Didaftarkan di root app (bukan /api/v1) supaya lepas dari group protected,
+			// dan SEBELUM static supaya method PUT tidak tertangkap static (yang hanya GET/HEAD).
+			// Key memuat slash (mis. attachments/<uuid>-file.txt) → pakai wildcard `*`.
+			app.Put("/uploads/*", h.Upload.UploadLocal)
+			// Sajikan file lampiran lewat route statis /uploads/* (public).
+			app.Use("/uploads", static.New(dir))
+		}
+	}
+
 	api := app.Group("/api/v1")
 
 	// --- Public routes ---
 	auth := api.Group("/auth")
 	auth.Post("/register", h.Auth.Register)
+	auth.Post("/verify", h.Auth.VerifyEmail)
+	auth.Post("/resend-verification", h.Auth.ResendVerification)
 	auth.Post("/login", h.Auth.Login)
 
 	// --- Protected routes (butuh JWT) ---

@@ -48,6 +48,11 @@ func NewPresigner(ctx context.Context, endpoint, region, accessKey, secretKey, b
 // PresignUpload mengembalikan (uploadURL, fileURL) untuk sebuah filename+content-type.
 // fileURL dipakai sebagai attachment_url final setelah upload sukses.
 func (p *Presigner) PresignUpload(ctx context.Context, filename, contentType string) (string, string, error) {
+	return p.UploadURL(ctx, filename, contentType)
+}
+
+// UploadURL mengimplementasikan Storage — presigned PUT langsung ke S3.
+func (p *Presigner) UploadURL(ctx context.Context, filename, contentType string) (string, string, error) {
 	key := fmt.Sprintf("attachments/%s-%s", uuid.NewString(), filename)
 
 	req, err := p.client.PresignPutObject(ctx, &s3.PutObjectInput{

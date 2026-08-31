@@ -1,11 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MailCheck } from 'lucide-react';
 import { apiCall, ApiError } from '@/lib/api';
-import { setAuthToken } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -13,9 +11,9 @@ import { FormField } from '@/components/ui/FormField';
 import { Alert } from '@/components/ui/Alert';
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [registeredEmail, setRegisteredEmail] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -35,7 +33,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const data = await apiCall<{ token: string; user: { id: string; name: string; email: string } }>(
+      await apiCall<{ token: string; user: { id: string; name: string; email: string } }>(
         '/auth/register',
         {
           method: 'POST',
@@ -47,10 +45,7 @@ export default function RegisterPage() {
         }
       );
 
-      await setAuthToken(data.token);
-      localStorage.setItem('token', data.token);
-
-      router.push('/onboarding');
+      setRegisteredEmail(formData.email);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.statusCode === 409) {
@@ -65,6 +60,41 @@ export default function RegisterPage() {
       setLoading(false);
     }
   };
+
+  if (registeredEmail) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-base-100">
+        <div className="w-full max-w-md text-center">
+          <div className="flex justify-center mb-6">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+              <MailCheck className="w-8 h-8 text-primary" />
+            </div>
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-bold mb-3 text-base-content">Cek email kamu</h1>
+          <p className="text-sm sm:text-base text-base-content/60 mb-8">
+            Kami sudah mengirim link verifikasi ke{' '}
+            <span className="font-medium text-base-content">{registeredEmail}</span>.
+            Buka email tersebut dan klik tombol verifikasi untuk mengaktifkan akunmu.
+          </p>
+          <Card className="p-4">
+            <p className="text-xs sm:text-sm text-base-content/60 mb-4">
+              Belum menerima email? Periksa folder spam, atau{' '}
+              <Link
+                href="/login"
+                className="text-primary font-medium hover:underline"
+              >
+                kirim ulang
+              </Link>{' '}
+              setelah masuk.
+            </p>
+            <Link href="/login">
+              <Button fullWidth>Ke halaman Login</Button>
+            </Link>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-base-100">

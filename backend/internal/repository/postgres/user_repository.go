@@ -48,6 +48,22 @@ func (r *userRepository) FindByID(ctx context.Context, id uuid.UUID) (*entity.Us
 	return &user, nil
 }
 
+func (r *userRepository) FindByVerificationToken(ctx context.Context, token string) (*entity.User, error) {
+	var user entity.User
+	err := r.db.WithContext(ctx).Where("verification_token = ?", token).First(&user).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, apperror.ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (r *userRepository) Update(ctx context.Context, user *entity.User) error {
 	return r.db.WithContext(ctx).Model(user).Updates(user).Error
+}
+
+func (r *userRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Delete(&entity.User{}, "id = ?", id).Error
 }

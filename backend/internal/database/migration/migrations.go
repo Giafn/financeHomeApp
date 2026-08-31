@@ -219,4 +219,22 @@ var Migrations = []*gormigrate.Migration{
 			`).Error
 		},
 	},
+	{
+		ID: "20260831000001_add_email_verification_to_users",
+		Migrate: func(tx *gorm.DB) error {
+			// Tambah kolom verifikasi email (email_verified_at, verification_token, verification_token_exp).
+			// AutoMigrate hanya menambah kolom yang belum ada; aman untuk tabel users yang sudah ada.
+			if err := tx.AutoMigrate(&entity.User{}); err != nil {
+				return err
+			}
+			// Tambah index untuk lookup token saat verifikasi.
+			return tx.Exec(`
+				CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_users_verification_token
+				ON users(verification_token)
+			`).Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Exec(`DROP INDEX IF EXISTS idx_users_verification_token`).Error
+		},
+	},
 }

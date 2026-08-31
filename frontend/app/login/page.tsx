@@ -15,12 +15,37 @@ import { Alert } from '@/components/ui/Alert';
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [error, setError] = useState('');
+  const [notVerified, setNotVerified] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
+
+  const resendVerification = async () => {
+    if (!formData.email || !formData.password) return;
+    setResending(true);
+    setError('');
+    try {
+      await apiCall('/auth/resend-verification', {
+        method: 'POST',
+        body: JSON.stringify(formData),
+      });
+      setNotVerified(false);
+      setError('Email verifikasi telah dikirim ulang ke ' + formData.email);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Gagal mengirim ulang email verifikasi');
+      }
+    } finally {
+      setResending(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setNotVerified(false);
     setLoading(true);
 
     try {
@@ -46,7 +71,12 @@ export default function LoginPage() {
       }
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.statusCode === 401 ? 'Email atau password salah' : err.message);
+        if (err.statusCode === 403) {
+          setError('Email belum diverifikasi. Silakan verifikasi lewat email kamu.');
+          setNotVerified(true);
+        } else {
+          setError(err.statusCode === 401 ? 'Email atau password salah' : err.message);
+        }
       } else {
         setError('Login gagal');
       }
@@ -102,6 +132,26 @@ export default function LoginPage() {
                 'Masuk'
               )}
             </Button>
+
+            {notVerified && (
+              <Button
+                type="button"
+                variant="ghost"
+                fullWidth
+                disabled={resending}
+                onClick={resendVerification}
+                className="mt-1"
+              >
+                {resending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Mengirim ulang...
+                  </>
+                ) : (
+                  'Kirim ulang email verifikasi'
+                )}
+              </Button>
+            )}
           </form>
 
           <div className="flex items-center gap-4 my-6">

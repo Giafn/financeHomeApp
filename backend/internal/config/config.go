@@ -11,6 +11,7 @@ import (
 type Config struct {
 	AppEnv  string
 	AppPort string
+	AppURL  string
 
 	DBHost     string
 	DBPort     string
@@ -30,6 +31,11 @@ type Config struct {
 	S3SecretKey  string
 	S3Region     string
 
+	StorageDriver        string
+	StorageLocalDir      string
+	StoragePublicBaseURL string
+	MaxUploadMB          int
+
 	SMTPHost     string
 	SMTPPort     string
 	SMTPUser     string
@@ -44,6 +50,7 @@ func Load() (*Config, error) {
 	cfg := &Config{
 		AppEnv:  getEnv("APP_ENV", "development"),
 		AppPort: getEnv("APP_PORT", "8080"),
+		AppURL:  getEnv("APP_URL", "http://localhost:3000"),
 
 		DBHost:     getEnv("DB_HOST", "localhost"),
 		DBPort:     getEnv("DB_PORT", "5432"),
@@ -61,6 +68,11 @@ func Load() (*Config, error) {
 		S3AccessKey:  getEnv("S3_ACCESS_KEY", ""),
 		S3SecretKey:  getEnv("S3_SECRET_KEY", ""),
 		S3Region:     getEnv("S3_REGION", ""),
+
+		StorageDriver:        getEnv("STORAGE_DRIVER", ""),
+		StorageLocalDir:      getEnv("STORAGE_LOCAL_DIR", "./data/uploads"),
+		StoragePublicBaseURL: getEnv("STORAGE_PUBLIC_BASE_URL", "http://localhost:8080"),
+		MaxUploadMB:          getEnvAsInt("MAX_UPLOAD_MB", 10),
 
 		SMTPHost:     getEnv("SMTP_HOST", ""),
 		SMTPPort:     getEnv("SMTP_PORT", ""),

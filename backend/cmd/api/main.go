@@ -58,7 +58,8 @@ func main() {
 	transactionRepo := postgresRepo.NewTransactionRepository(db)
 	txManager := postgresRepo.NewTxManager(db)
 
-	authUsecase := usecase.NewAuthUsecase(userRepo, jwtManager)
+	mailerClient := mailer.NewSMTPMailer(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPassword, cfg.SMTPFrom)
+	authUsecase := usecase.NewAuthUsecase(userRepo, jwtManager, mailerClient, cfg.AppURL)
 	userUsecase := usecase.NewUserUsecase(userRepo, householdRepo)
 	householdUsecase := usecase.NewHouseholdUsecase(householdRepo, categoryRepo, txManager)
 	accountUsecase := usecase.NewAccountUsecase(householdRepo, accountRepo)
@@ -74,19 +75,38 @@ func main() {
 	dashboardUsecase := usecase.NewDashboardUsecase(accountUsecase, budgetUsecase, goalUsecase, transactionUsecase, householdRepo, transactionRepo, billPeriodRepo)
 	reportUsecase := usecase.NewReportUsecase(transactionRepo, householdRepo)
 
-	// Presigner opsional — kalau S3 belum dikonfigurasi, endpoint presign akan 503
-	// alih-alih membuat server gagal start di lingkungan dev tanpa S3.
-	var presigner *storage.Presigner
-	if cfg.S3Bucket != "" {
-		presigner, err = storage.NewPresigner(context.Background(), cfg.S3Endpoint, cfg.S3Region, cfg.S3AccessKey, cfg.S3SecretKey, cfg.S3Bucket)
+	// Penyimpanan lampiran: S3 (presigned, client upload langsung ke bucket) atau
+	// lokal (file disimpan di disk server, disajikan lewat route statis /uploads).
+	// Default: S3 kalau S3_BUCKET diisi, selain itu local. Bisa dipaksa lewat STORAGE_DRIVER.
+	storageDriver := cfg.StorageDriver
+	if storageDriver == "" {
+		if cfg.S3Bucket != "" {
+			storageDriver = "s3"
+		} else {
+			storageDriver = "local"
+		}
+	}
+
+	var fileStore storage.Storage
+	var localStore *storage.LocalStore
+	switch storageDriver {
+	case "s3":
+		fileStore, err = storage.NewPresigner(context.Background(), cfg.S3Endpoint, cfg.S3Region, cfg.S3AccessKey, cfg.S3SecretKey, cfg.S3Bucket)
 		if err != nil {
 			log.Fatalf("gagal inisialisasi S3 presigner: %v", err)
 		}
+	case "local":
+		localStore, err = storage.NewLocalStore(cfg.StorageLocalDir, cfg.StoragePublicBaseURL)
+		if err != nil {
+			log.Fatalf("gagal inisialisasi local storage: %v", err)
+		}
+		fileStore = localStore
+	default:
+		log.Fatalf("STORAGE_DRIVER tidak dikenal: %s (harus 'local' atau 's3')", storageDriver)
 	}
 
 	notificationLogRepo := postgresRepo.NewNotificationLogRepository(db)
 	notificationGuard := notification.NewGuard(notificationLogRepo)
-	mailerClient := mailer.NewSMTPMailer(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPassword, cfg.SMTPFrom)
 
 	jobRegistry := job.NewRegistry()
 	job.RegisterJobs(jobRegistry, mailerClient, notificationGuard, cfg.SMTPUser, budgetRepo, householdRepo, billRepo, billPeriodRepo)
@@ -98,7 +118,7 @@ func main() {
 		Account:     handler.NewAccountHandler(accountUsecase),
 		Category:    handler.NewCategoryHandler(categoryUsecase, householdRepo, validate),
 		Transaction: handler.NewTransactionHandler(transactionUsecase, validate),
-		Upload:      handler.NewUploadHandler(presigner, validate),
+		Upload:      handler.NewUploadHandler(fileStore, localStore, validate),
 		Job:         handler.NewJobHandler(jobRegistry),
 		Budget:      handler.NewBudgetHandler(budgetUsecase, validate),
 		Goal:        handler.NewGoalHandler(goalUsecase, validate),
@@ -108,7 +128,8 @@ func main() {
 	}
 
 	app := fiber.New(fiber.Config{
-		AppName: "Family Finance API",
+		AppName:   "Family Finance API",
+		BodyLimit: cfg.MaxUploadMB << 20, // batas upload (MB -> bytes)
 	})
 
 	app.Use(recover.New())
@@ -135,7 +156,7 @@ func main() {
 	// TODO: fiber-swagger (swaggo) hanya support fiber v2; belum ada handler v3-compatible.
 	// docs.go/swagger.json tetap ter-generate oleh `swag init`, tapi UI-nya belum di-mount.
 
-	httpDelivery.RegisterRoutes(app, handlers, jwtManager, cfg.AppEnv == "production")
+	httpDelivery.RegisterRoutes(app, handlers, jwtManager, cfg.AppEnv == "production", localStore)
 
 	log.Printf("🚀 server berjalan di port %s (env: %s)", cfg.AppPort, cfg.AppEnv)
 	if err := app.Listen(":" + cfg.AppPort); err != nil {
