@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiCall, ApiError } from '@/lib/api';
-import { Loader2, Plus, Receipt, CheckCircle2, Clock, AlertTriangle, X } from 'lucide-react';
+import { Loader2, Plus, Receipt, CheckCircle2, Clock, AlertTriangle, X, Pencil, Trash2, Square } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
@@ -91,6 +91,8 @@ export default function BillsPage() {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingBill, setEditingBill] = useState<Bill | null>(null);
   const [payingPeriod, setPayingPeriod] = useState<{ bill: Bill; period: BillPeriod } | null>(null);
 
   const [formName, setFormName] = useState('');
@@ -99,6 +101,11 @@ export default function BillsPage() {
   const [formDueDay, setFormDueDay] = useState('');
   const [formStartPeriod, setFormStartPeriod] = useState('');
   const [formEndPeriod, setFormEndPeriod] = useState('');
+
+  const [editName, setEditName] = useState('');
+  const [editCategoryId, setEditCategoryId] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editDueDay, setEditDueDay] = useState('');
 
   const [payAccountId, setPayAccountId] = useState('');
   const [payAmount, setPayAmount] = useState('');
@@ -222,6 +229,95 @@ export default function BillsPage() {
     }
   };
 
+  const openEditModal = (bill: Bill) => {
+    setEditingBill(bill);
+    setEditName(bill.name);
+    setEditCategoryId(bill.category_id);
+    setEditAmount(String(bill.amount));
+    setEditDueDay(String(bill.due_day));
+    setShowEditModal(true);
+  };
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBill || !editName.trim() || !editCategoryId || !editAmount || !editDueDay) {
+      setError('Semua field wajib diisi');
+      return;
+    }
+
+    setError('');
+    setSuccess('');
+    setUpdating(true);
+
+    try {
+      await apiCall(`/bills/${editingBill.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: editName,
+          category_id: editCategoryId,
+          amount: parseFloat(editAmount),
+          due_day: parseInt(editDueDay, 10),
+        }),
+      });
+      setSuccess('Tagihan berhasil diperbarui');
+      setShowEditModal(false);
+      setEditingBill(null);
+      fetchData();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Gagal memperbarui tagihan');
+      }
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleDelete = async (bill: Bill) => {
+    if (!window.confirm(`Hapus tagihan "${bill.name}"? Semua periodenya akan ikut terhapus.`)) {
+      return;
+    }
+    setError('');
+    setSuccess('');
+    setUpdating(true);
+    try {
+      await apiCall(`/bills/${bill.id}`, { method: 'DELETE' });
+      setSuccess('Tagihan berhasil dihapus');
+      fetchData();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Gagal menghapus tagihan');
+      }
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleStop = async (bill: Bill) => {
+    if (!window.confirm(`Hentikan tagihan "${bill.name}"? Periode masa depan yang belum dibayar akan dihapus.`)) {
+      return;
+    }
+    setError('');
+    setSuccess('');
+    setUpdating(true);
+    try {
+      await apiCall(`/bills/${bill.id}/stop`, { method: 'POST' });
+      setSuccess('Tagihan berhasil dihentikan');
+      fetchData();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Gagal menghentikan tagihan');
+      }
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   return (
     <AppShell active="/bills">
       <div className="border-b border-base-300 bg-base-200 sticky top-0 z-50">
@@ -265,8 +361,23 @@ export default function BillsPage() {
                   {bill.next_period && statusBadge(bill.next_period.status)}
                 </div>
 
+                <div className="flex items-center gap-2 pt-3 border-t border-base-300">
+                  <Button size="sm" variant="outline" onClick={() => openEditModal(bill)} disabled={updating}>
+                    <Pencil className="w-3.5 h-3.5" />
+                    Edit
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => handleStop(bill)} disabled={updating}>
+                    <Square className="w-3.5 h-3.5" />
+                    Stop
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => handleDelete(bill)} disabled={updating} className="!text-error hover:!bg-error/10 ml-auto">
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Hapus
+                  </Button>
+                </div>
+
                 {bill.next_period ? (
-                  <div className="flex items-center justify-between pt-3 border-t border-base-300">
+                  <div className="flex items-center justify-between pt-3 border-t border-base-300 mt-3">
                     <div>
                       <p className="text-xs text-base-content/60">
                         Periode {bill.next_period.period} · jatuh tempo{' '}
@@ -280,7 +391,7 @@ export default function BillsPage() {
                     )}
                   </div>
                 ) : (
-                  <p className="text-xs text-base-content/60 pt-3 border-t border-base-300">Semua periode sudah dibayar</p>
+                  <p className="text-xs text-base-content/60 pt-3 border-t border-base-300 mt-3">Semua periode sudah dibayar</p>
                 )}
               </Card>
             ))}
@@ -422,6 +533,69 @@ export default function BillsPage() {
                 </Button>
                 <Button type="submit" fullWidth disabled={updating}>
                   {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Konfirmasi Bayar'}
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && editingBill && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-4">
+          <Card className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-base-content">Edit Tagihan</h2>
+              <button onClick={() => setShowEditModal(false)} className="text-base-content/60 hover:text-base-content">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEdit} className="flex flex-col gap-4">
+              <FormField label="Nama Tagihan">
+                <Input
+                  type="text"
+                  placeholder="Contoh: Cicilan Renovasi"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  disabled={updating}
+                />
+              </FormField>
+
+              <FormField label="Kategori">
+                <Select value={editCategoryId} onChange={(e) => setEditCategoryId(e.target.value)} disabled={updating}>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+
+              <FormField label="Nominal per Periode" hint="Berlaku untuk periode yang belum dibayar; yang sudah dibayar tidak berubah">
+                <CurrencyInput value={editAmount} onChange={setEditAmount} disabled={updating} />
+              </FormField>
+
+              <FormField label="Tanggal Jatuh Tempo" hint="1-31, otomatis disesuaikan kalau bulan lebih pendek">
+                <Input
+                  type="number"
+                  placeholder="10"
+                  required
+                  min="1"
+                  max="31"
+                  value={editDueDay}
+                  onChange={(e) => setEditDueDay(e.target.value)}
+                  disabled={updating}
+                />
+              </FormField>
+
+              <div className="flex gap-3 pt-2">
+                <Button type="button" variant="ghost" fullWidth onClick={() => setShowEditModal(false)} disabled={updating}>
+                  Batal
+                </Button>
+                <Button type="submit" fullWidth disabled={updating}>
+                  {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Simpan'}
                 </Button>
               </div>
             </form>

@@ -237,4 +237,38 @@ var Migrations = []*gormigrate.Migration{
 			return tx.Exec(`DROP INDEX IF EXISTS idx_users_verification_token`).Error
 		},
 	},
+	{
+		ID: "20260831000002_add_admin_fee_to_transactions",
+		Migrate: func(tx *gorm.DB) error {
+			// Biaya admin pada transaksi transfer, default 0. Kolom NOT NULL dengan default
+			// otomatis terisi 0 untuk semua baris yang sudah ada.
+			return tx.Exec(`
+				ALTER TABLE transactions
+				ADD COLUMN IF NOT EXISTS admin_fee numeric(18,2) NOT NULL DEFAULT 0
+			`).Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Exec(`ALTER TABLE transactions DROP COLUMN IF EXISTS admin_fee`).Error
+		},
+	},
+	{
+		ID: "20260831000003_fix_budget_period_unique_index_soft_delete",
+		Migrate: func(tx *gorm.DB) error {
+			// idx_budget_period (household_id, category_id, period) TIDAK menyertakan deleted_at,
+			// jadi budget yang sudah soft-deleted masih menempati slot unik dan menghalangi pembuatan
+			// budget baru untuk kategori + periode yang sama (SQLSTATE 23505). Ganti ke partial unique
+			// index yang hanya berlaku untuk baris aktif (deleted_at IS NULL).
+			_ = tx.Migrator().DropIndex(&entity.Budget{}, "idx_budget_period")
+			return tx.Exec(`
+				CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS idx_uq_budget_period_active
+				ON budgets(household_id, category_id, period)
+				WHERE deleted_at IS NULL
+			`).Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			_ = tx.Exec(`DROP INDEX IF EXISTS idx_uq_budget_period_active`).Error
+			// Restore index non-partial via AutoMigrate (membuat index default entity).
+			return tx.Migrator().CreateIndex(&entity.Budget{}, "idx_budget_period")
+		},
+	},
 }

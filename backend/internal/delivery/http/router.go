@@ -113,6 +113,8 @@ func RegisterRoutes(app *fiber.App, h *Handlers, jwtManager *jwt.Manager, isProd
 	bills.Get("/", h.Bill.ListBills)
 	bills.Get("/:id/periods", h.Bill.GetBillPeriods)
 	bills.Patch("/:id", h.Bill.UpdateBill)
+	bills.Delete("/:id", h.Bill.DeleteBill)
+	bills.Post("/:id/stop", h.Bill.StopBill)
 
 	billPeriods := protected.Group("/bill-periods")
 	billPeriods.Post("/:id/pay", h.Bill.PayBillPeriod)

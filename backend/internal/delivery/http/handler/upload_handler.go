@@ -48,6 +48,7 @@ func (h *UploadHandler) PresignUpload(c fiber.Ctx) error {
 
 	uploadURL, fileURL, err := h.store.UploadURL(c.Context(), req.Filename, req.ContentType)
 	if err != nil {
+		log.Printf("gagal presign upload: filename=%s err=%v", req.Filename, err)
 		return response.Error(c, fiber.StatusInternalServerError, "Gagal membuat URL upload")
 	}
 

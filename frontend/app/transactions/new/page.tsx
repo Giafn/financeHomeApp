@@ -51,6 +51,7 @@ export default function NewTransactionPage() {
   const [destinationAccountId, setDestinationAccountId] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [amount, setAmount] = useState('');
+  const [adminFee, setAdminFee] = useState('0');
   const [description, setDescription] = useState('');
   const [transactionDate, setTransactionDate] = useState(todayStr());
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
@@ -172,6 +173,7 @@ export default function NewTransactionPage() {
       };
       if (type === 'transfer') {
         body.destination_account_id = destinationAccountId;
+        body.admin_fee = parseFloat(adminFee) || 0;
       } else {
         body.category_id = categoryId;
       }
@@ -275,6 +277,17 @@ export default function NewTransactionPage() {
                 autoFocus
               />
             </FormField>
+
+            {type === 'transfer' && (
+              <FormField label="Biaya Admin" hint="Opsional — default 0">
+                <CurrencyInput
+                  placeholder="0"
+                  value={adminFee}
+                  onChange={setAdminFee}
+                  disabled={submitting}
+                />
+              </FormField>
+            )}
 
             <FormField label="Tanggal">
               <Input

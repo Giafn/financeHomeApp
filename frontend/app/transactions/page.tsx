@@ -17,6 +17,7 @@ interface TransactionItem {
   account_name: string;
   category_name?: string | null;
   amount: number;
+  admin_fee?: number;
   description?: string | null;
   transaction_date: string;
   created_by_name: string;
@@ -326,6 +327,12 @@ export default function TransactionsPage() {
                   {formatCurrency(selected.amount)}
                 </p>
               </div>
+              {selected.type === 'transfer' && (selected.admin_fee ?? 0) > 0 && (
+                <div>
+                  <p className="text-sm text-base-content/60">Biaya Admin</p>
+                  <p className="font-medium text-base-content">{formatCurrency(selected.admin_fee ?? 0)}</p>
+                </div>
+              )}
               {selected.description && (
                 <div>
                   <p className="text-sm text-base-content/60">Deskripsi</p>

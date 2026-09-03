@@ -24,6 +24,7 @@ type Transaction struct {
 	DestinationAccountID *uuid.UUID      `gorm:"type:uuid" json:"destination_account_id,omitempty"`
 	CategoryID           *uuid.UUID      `gorm:"type:uuid" json:"category_id,omitempty"`
 	Amount               float64         `gorm:"type:numeric(18,2);not null" json:"amount"`
+	AdminFee             float64         `gorm:"type:numeric(18,2);not null;default:0" json:"admin_fee"`
 	Description          *string         `gorm:"type:text" json:"description,omitempty"`
 	TransactionDate      time.Time       `gorm:"type:date;not null" json:"transaction_date"`
 	AttachmentURL        *string         `gorm:"type:varchar(500)" json:"attachment_url,omitempty"`

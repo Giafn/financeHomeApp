@@ -30,6 +30,14 @@ type BillPeriodRepository interface {
 	NextUpcomingByBillID(ctx context.Context, billID uuid.UUID) (*entity.BillPeriod, error)
 	MarkPaid(ctx context.Context, id, transactionID uuid.UUID, paidAt time.Time) error
 	UpdateStatus(ctx context.Context, id uuid.UUID, status entity.BillPeriodStatus) error
+	// RecalcDueDatesFrom memperbarui due_date periode yang belum dibayar (upcoming/overdue)
+	// dengan due-day baru, dipanggil saat due_day bill diubah.
+	RecalcDueDatesFrom(ctx context.Context, billID uuid.UUID, dueDay int) error
+	// SoftDeleteByBillID menandai semua periode milik bill sebagai dihapus.
+	SoftDeleteByBillID(ctx context.Context, billID uuid.UUID) error
+	// DeleteUnpaidFrom menghapus periode belum dibayar (upcoming/overdue) mulai bulan `period`
+	// ke depan — dipakai "stop tagihan" supaya periode masa depan tidak muncul lagi.
+	DeleteUnpaidFrom(ctx context.Context, billID uuid.UUID, period string) error
 	// ListDueForReminder upcoming period dengan due_date dalam <= reminder_days_before hari dari today,
 	// belum lewat due_date (bukan overdue) — dipakai job bill-reminder-check.
 	ListDueForReminder(ctx context.Context, today time.Time) ([]*BillPeriodWithBill, error)

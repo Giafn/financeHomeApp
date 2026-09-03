@@ -33,7 +33,8 @@ func mapBillErr(c fiber.Ctx, err error) error {
 		errors.Is(err, apperror.ErrInvalidPeriodFormat),
 		errors.Is(err, apperror.ErrCategoryRequired),
 		errors.Is(err, apperror.ErrCategoryTypeMismatch),
-		errors.Is(err, apperror.ErrAccountInactive):
+		errors.Is(err, apperror.ErrAccountInactive),
+		errors.Is(err, apperror.ErrInvalidInput):
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	case errors.Is(err, apperror.ErrBillPeriodAlreadyPaid):
 		return response.Error(c, fiber.StatusConflict, err.Error())
@@ -154,7 +155,7 @@ func (h *BillHandler) GetBillPeriods(c fiber.Ctx) error {
 
 // UpdateBill godoc
 //
-//	@Summary		Update a bill (is_active, reminder_days_before, due_day only)
+//	@Summary		Update a bill (name, amount, category, due_day, reminder_days_before, is_active, end_period)
 //	@Tags			Bills
 //	@Accept			json
 //	@Produce		json
@@ -180,17 +181,77 @@ func (h *BillHandler) UpdateBill(c fiber.Ctx) error {
 		return response.Error(c, fiber.StatusBadRequest, "Validasi gagal: "+err.Error())
 	}
 
-	bill, err := h.billUsecase.UpdateBill(c.Context(), userID, billID, usecase.UpdateBillInput{
+	input := usecase.UpdateBillInput{
 		IsActive:           req.IsActive,
+		Name:               req.Name,
+		Amount:             req.Amount,
 		ReminderDaysBefore: req.ReminderDaysBefore,
 		DueDay:             req.DueDay,
 		EndPeriod:          req.EndPeriod,
-	})
+	}
+	if req.CategoryID != nil {
+		categoryID, err := uuid.Parse(*req.CategoryID)
+		if err != nil {
+			return response.Error(c, fiber.StatusBadRequest, "ID kategori tidak valid")
+		}
+		input.CategoryID = &categoryID
+	}
+
+	bill, err := h.billUsecase.UpdateBill(c.Context(), userID, billID, input)
 	if err != nil {
 		return mapBillErr(c, err)
 	}
 
 	return response.Success(c, fiber.StatusOK, "ok", mapBillToResponse(&usecase.BillWithNextPeriod{Bill: bill}))
+}
+
+// DeleteBill godoc
+//
+//	@Summary		Delete a bill (soft delete) and its periods
+//	@Tags			Bills
+//	@Param			id	path	string	true	"Bill ID"
+//	@Success		200	{object}	response.Envelope
+//	@Failure		404	{object}	response.Envelope
+//	@Router			/bills/{id} [delete]
+//	@Security		BearerAuth
+func (h *BillHandler) DeleteBill(c fiber.Ctx) error {
+	userID := c.Locals(middleware.LocalsUserID).(uuid.UUID)
+
+	billID, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return response.Error(c, fiber.StatusBadRequest, "ID tagihan tidak valid")
+	}
+
+	if err := h.billUsecase.DeleteBill(c.Context(), userID, billID); err != nil {
+		return mapBillErr(c, err)
+	}
+
+	return response.Success(c, fiber.StatusOK, "Tagihan berhasil dihapus", nil)
+}
+
+// StopBill godoc
+//
+//	@Summary		Stop a recurring bill (close + deactivate, remove unpaid future periods)
+//	@Tags			Bills
+//	@Param			id	path	string	true	"Bill ID"
+//	@Success		200	{object}	response.Envelope{data=dto.BillResponse}
+//	@Failure		404	{object}	response.Envelope
+//	@Router			/bills/{id}/stop [post]
+//	@Security		BearerAuth
+func (h *BillHandler) StopBill(c fiber.Ctx) error {
+	userID := c.Locals(middleware.LocalsUserID).(uuid.UUID)
+
+	billID, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return response.Error(c, fiber.StatusBadRequest, "ID tagihan tidak valid")
+	}
+
+	bill, err := h.billUsecase.StopBill(c.Context(), userID, billID)
+	if err != nil {
+		return mapBillErr(c, err)
+	}
+
+	return response.Success(c, fiber.StatusOK, "Tagihan berhasil dihentikan", mapBillToResponse(&usecase.BillWithNextPeriod{Bill: bill}))
 }
 
 // PayBillPeriod godoc

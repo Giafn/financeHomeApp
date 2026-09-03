@@ -15,4 +15,6 @@ type BillRepository interface {
 	// ListIndefiniteActive bill aktif tanpa end_period — dipakai job bill-period-generator (Phase 10 §2).
 	ListIndefiniteActive(ctx context.Context) ([]*entity.Bill, error)
 	Update(ctx context.Context, bill *entity.Bill) error
+	// SoftDelete menandai bill sebagai dihapus (soft delete via DeletedAt).
+	SoftDelete(ctx context.Context, id uuid.UUID) error
 }
