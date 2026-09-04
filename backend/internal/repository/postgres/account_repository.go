@@ -70,7 +70,7 @@ func (r *accountRepository) CalculateBalance(ctx context.Context, accountID uuid
 		SELECT
 			COALESCE(SUM(CASE WHEN type = 'income' AND account_id = ? THEN amount ELSE 0 END), 0)
 			- COALESCE(SUM(CASE WHEN type = 'expense' AND account_id = ? THEN amount ELSE 0 END), 0)
-			- COALESCE(SUM(CASE WHEN type = 'transfer' AND account_id = ? THEN amount ELSE 0 END), 0)
+			- COALESCE(SUM(CASE WHEN type = 'transfer' AND account_id = ? THEN amount + admin_fee ELSE 0 END), 0)
 			+ COALESCE(SUM(CASE WHEN type = 'transfer' AND destination_account_id = ? THEN amount ELSE 0 END), 0)
 		FROM transactions
 		WHERE deleted_at IS NULL

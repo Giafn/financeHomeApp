@@ -6,6 +6,7 @@ type CreateTransactionRequest struct {
 	DestinationAccountID *string `json:"destination_account_id" validate:"omitempty,uuid"`
 	CategoryID           *string `json:"category_id" validate:"omitempty,uuid"`
 	Amount               float64 `json:"amount" validate:"required,gt=0"`
+	AdminFee             float64 `json:"admin_fee" validate:"min=0"`
 	Description          *string `json:"description"`
 	TransactionDate      string  `json:"transaction_date" validate:"required,datetime=2006-01-02"`
 	AttachmentURL        *string `json:"attachment_url"`
@@ -20,6 +21,7 @@ type UpdateTransactionRequest struct {
 	DestinationAccountID *string  `json:"destination_account_id" validate:"omitempty,uuid"`
 	CategoryID           *string  `json:"category_id" validate:"omitempty,uuid"`
 	Amount               *float64 `json:"amount" validate:"omitempty,gt=0"`
+	AdminFee             *float64 `json:"admin_fee" validate:"omitempty,min=0"`
 	Description          *string  `json:"description"`
 	TransactionDate      *string  `json:"transaction_date" validate:"omitempty,datetime=2006-01-02"`
 	AttachmentURL        *string  `json:"attachment_url"`
@@ -36,6 +38,7 @@ type TransactionResponse struct {
 	CategoryID           *string `json:"category_id,omitempty"`
 	CategoryName         *string `json:"category_name,omitempty"`
 	Amount               float64 `json:"amount"`
+	AdminFee             float64 `json:"admin_fee"`
 	Description          *string `json:"description,omitempty"`
 	TransactionDate      string  `json:"transaction_date"`
 	AttachmentURL        *string `json:"attachment_url,omitempty"`

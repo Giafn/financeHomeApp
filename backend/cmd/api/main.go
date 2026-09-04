@@ -71,7 +71,7 @@ func main() {
 	transactionUsecase := usecase.NewTransactionUsecase(transactionRepo, accountRepo, categoryRepo, householdRepo, goalUsecase)
 	billRepo := postgresRepo.NewBillRepository(db)
 	billPeriodRepo := postgresRepo.NewBillPeriodRepository(db)
-	billUsecase := usecase.NewBillUsecase(billRepo, billPeriodRepo, categoryRepo, accountRepo, householdRepo, transactionUsecase)
+	billUsecase := usecase.NewBillUsecase(billRepo, billPeriodRepo, categoryRepo, accountRepo, householdRepo, transactionUsecase, txManager)
 	budgetPlanUsecase := usecase.NewBudgetPlanUsecase(budgetRepo, billPeriodRepo, transactionRepo, householdRepo, accountUsecase)
 	dashboardUsecase := usecase.NewDashboardUsecase(accountUsecase, budgetUsecase, goalUsecase, transactionUsecase, budgetPlanUsecase, householdRepo, transactionRepo, billPeriodRepo)
 	reportUsecase := usecase.NewReportUsecase(transactionRepo, householdRepo)
@@ -118,7 +118,7 @@ func main() {
 		Household:   handler.NewHouseholdHandler(householdUsecase),
 		Account:     handler.NewAccountHandler(accountUsecase),
 		Category:    handler.NewCategoryHandler(categoryUsecase, householdRepo, validate),
-		Transaction: handler.NewTransactionHandler(transactionUsecase, validate),
+		Transaction: handler.NewTransactionHandler(transactionUsecase, validate, fileStore),
 		Upload:      handler.NewUploadHandler(fileStore, localStore, validate),
 		Job:         handler.NewJobHandler(jobRegistry),
 		Budget:      handler.NewBudgetHandler(budgetUsecase, validate),

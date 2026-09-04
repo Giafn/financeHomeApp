@@ -26,6 +26,7 @@ var (
 	ErrCategoryNotExpense  = errors.New("kategori harus bertipe expense")
 	ErrBudgetAlreadyExists = errors.New("budget untuk kategori dan periode ini sudah ada, gunakan PATCH untuk mengubah")
 	ErrInvalidPeriodFormat = errors.New("format period tidak valid, gunakan YYYY-MM")
+	ErrInvalidInput        = errors.New("input tidak valid")
 
 	ErrGoalHasContributions = errors.New("goal masih punya transaksi kontribusi, tidak bisa dihapus")
 

@@ -112,6 +112,40 @@ func (r *BillPeriodRepository) UpdateStatus(ctx context.Context, id uuid.UUID, s
 		Update("status", status).Error
 }
 
+func (r *BillPeriodRepository) RecalcDueDatesFrom(ctx context.Context, billID uuid.UUID, dueDay int) error {
+	var periods []*entity.BillPeriod
+	err := dbOrTx(ctx, r.db).WithContext(ctx).
+		Where("bill_id = ? AND status IN ('upcoming', 'overdue') AND deleted_at IS NULL", billID).
+		Find(&periods).Error
+	if err != nil {
+		return err
+	}
+	for _, p := range periods {
+		dueDate, err := dueDateForPeriod(p.Period, dueDay)
+		if err != nil {
+			return err
+		}
+		if err := dbOrTx(ctx, r.db).WithContext(ctx).
+			Model(&entity.BillPeriod{}).
+			Where("id = ?", p.ID).
+			Update("due_date", dueDate).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *BillPeriodRepository) SoftDeleteByBillID(ctx context.Context, billID uuid.UUID) error {
+	return dbOrTx(ctx, r.db).WithContext(ctx).
+		Delete(&entity.BillPeriod{}, "bill_id = ?", billID).Error
+}
+
+func (r *BillPeriodRepository) DeleteUnpaidFrom(ctx context.Context, billID uuid.UUID, period string) error {
+	return dbOrTx(ctx, r.db).WithContext(ctx).
+		Where("bill_id = ? AND status IN ('upcoming', 'overdue') AND period >= ?", billID, period).
+		Delete(&entity.BillPeriod{}).Error
+}
+
 func (r *BillPeriodRepository) ListDueForReminder(ctx context.Context, today time.Time) ([]*repository.BillPeriodWithBill, error) {
 	var items []*repository.BillPeriodWithBill
 	err := dbOrTx(ctx, r.db).WithContext(ctx).
@@ -160,4 +194,19 @@ func (r *BillPeriodRepository) ListUpcomingForHousehold(ctx context.Context, hou
 		Order("bp.due_date ASC").
 		Find(&items).Error
 	return items, err
+}
+
+// dueDateForPeriod hitung due_date = due_day di bulan `period` ("YYYY-MM"), clamp ke
+// tanggal terakhir bulan itu kalau due_day melebihi jumlah hari bulan tsb.
+func dueDateForPeriod(period string, dueDay int) (time.Time, error) {
+	start, err := time.Parse("2006-01", period)
+	if err != nil {
+		return time.Time{}, err
+	}
+	lastDayOfMonth := start.AddDate(0, 1, -1).Day()
+	day := dueDay
+	if day > lastDayOfMonth {
+		day = lastDayOfMonth
+	}
+	return time.Date(start.Year(), start.Month(), day, 0, 0, 0, 0, time.UTC), nil
 }

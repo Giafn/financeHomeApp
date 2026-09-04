@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,12 +14,13 @@ import (
 )
 
 type BillUsecase struct {
-	billRepo        repository.BillRepository
-	billPeriodRepo  repository.BillPeriodRepository
-	categoryRepo    repository.CategoryRepository
-	accountRepo     repository.AccountRepository
-	householdRepo   repository.HouseholdRepository
-	transactionUC   *TransactionUsecase
+	billRepo       repository.BillRepository
+	billPeriodRepo repository.BillPeriodRepository
+	categoryRepo   repository.CategoryRepository
+	accountRepo    repository.AccountRepository
+	householdRepo  repository.HouseholdRepository
+	transactionUC  *TransactionUsecase
+	txManager      repository.TxManager
 }
 
 func NewBillUsecase(
@@ -28,6 +30,7 @@ func NewBillUsecase(
 	accountRepo repository.AccountRepository,
 	householdRepo repository.HouseholdRepository,
 	transactionUC *TransactionUsecase,
+	txManager repository.TxManager,
 ) *BillUsecase {
 	return &BillUsecase{
 		billRepo:       billRepo,
@@ -36,6 +39,7 @@ func NewBillUsecase(
 		accountRepo:    accountRepo,
 		householdRepo:  householdRepo,
 		transactionUC:  transactionUC,
+		txManager:      txManager,
 	}
 }
 
@@ -200,9 +204,12 @@ func (u *BillUsecase) GetBillPeriods(ctx context.Context, userID, billID uuid.UU
 
 type UpdateBillInput struct {
 	IsActive           *bool
+	Name               *string
+	Amount             *float64
+	CategoryID         *uuid.UUID
 	ReminderDaysBefore *int
 	DueDay             *int
-	// EndPeriod: alur "tutup bill lama" dari spec Phase 10 poin 6 (ubah nominal = tutup + buat baru).
+	// EndPeriod: batas akhir bill (dipakai alur "stop tagihan" / menutup bill).
 	EndPeriod *string
 }
 
@@ -220,6 +227,31 @@ func (u *BillUsecase) UpdateBill(ctx context.Context, userID, billID uuid.UUID, 
 	if input.IsActive != nil {
 		bill.IsActive = *input.IsActive
 	}
+	if input.Name != nil {
+		if strings.TrimSpace(*input.Name) == "" {
+			return nil, apperror.ErrInvalidInput
+		}
+		bill.Name = strings.TrimSpace(*input.Name)
+	}
+	if input.Amount != nil {
+		if *input.Amount <= 0 {
+			return nil, apperror.ErrInvalidInput
+		}
+		bill.Amount = *input.Amount
+	}
+	if input.CategoryID != nil {
+		category, err := u.categoryRepo.FindByID(ctx, *input.CategoryID, member.HouseholdID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, apperror.ErrNotFound
+			}
+			return nil, err
+		}
+		if category.Type != entity.CategoryExpense {
+			return nil, apperror.ErrCategoryNotExpense
+		}
+		bill.CategoryID = *input.CategoryID
+	}
 	if input.ReminderDaysBefore != nil {
 		bill.ReminderDaysBefore = *input.ReminderDaysBefore
 	}
@@ -236,7 +268,80 @@ func (u *BillUsecase) UpdateBill(ctx context.Context, userID, billID uuid.UUID, 
 		bill.EndPeriod = input.EndPeriod
 	}
 
-	if err := u.billRepo.Update(ctx, bill); err != nil {
+	err = u.txManager.WithinTx(ctx, func(ctx context.Context) error {
+		if err := u.billRepo.Update(ctx, bill); err != nil {
+			return err
+		}
+		// Kalau due_day berubah, selaraskan due_date periode yang belum dibayar supaya
+		// jatuh tempo periode ke depan mengikuti tanggal baru.
+		if input.DueDay != nil {
+			if err := u.billPeriodRepo.RecalcDueDatesFrom(ctx, bill.ID, *input.DueDay); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return bill, nil
+}
+
+// DeleteBill menghapus tagihan beserta seluruh periodenya (soft delete). Hanya bill milik
+// household user yang bisa dihapus.
+func (u *BillUsecase) DeleteBill(ctx context.Context, userID, billID uuid.UUID) error {
+	member, err := u.householdRepo.FindMemberByUserID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	if _, err := u.billRepo.FindByIDAndHousehold(ctx, billID, member.HouseholdID); err != nil {
+		return err
+	}
+
+	return u.txManager.WithinTx(ctx, func(ctx context.Context) error {
+		if err := u.billPeriodRepo.SoftDeleteByBillID(ctx, billID); err != nil {
+			return err
+		}
+		return u.billRepo.SoftDelete(ctx, billID)
+	})
+}
+
+// StopBill "menghentikan" tagihan berlangganan: menutup bill di bulan berjalan
+// (is_active=false + end_period=bulan ini) dan menghapus periode masa depan yang
+// belum dibayar supaya tidak menghasilkan tagihan baru lagi. Riwayat yang sudah
+// dibayar tetap tersimpan.
+func (u *BillUsecase) StopBill(ctx context.Context, userID, billID uuid.UUID) (*entity.Bill, error) {
+	member, err := u.householdRepo.FindMemberByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	bill, err := u.billRepo.FindByIDAndHousehold(ctx, billID, member.HouseholdID)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	stopPeriod := now.Format("2006-01")
+	if stopPeriod < bill.StartPeriod {
+		stopPeriod = bill.StartPeriod
+	}
+	if bill.EndPeriod != nil && bill.IsActive == false && stopPeriod >= *bill.EndPeriod {
+		// sudah berhenti
+		return bill, nil
+	}
+
+	err = u.txManager.WithinTx(ctx, func(ctx context.Context) error {
+		bill.EndPeriod = &stopPeriod
+		bill.IsActive = false
+		if err := u.billRepo.Update(ctx, bill); err != nil {
+			return err
+		}
+		return u.billPeriodRepo.DeleteUnpaidFrom(ctx, billID, stopPeriod)
+	})
+	if err != nil {
 		return nil, err
 	}
 

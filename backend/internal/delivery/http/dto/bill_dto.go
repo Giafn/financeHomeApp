@@ -11,12 +11,15 @@ type CreateBillRequest struct {
 }
 
 type UpdateBillRequest struct {
-	IsActive           *bool   `json:"is_active"`
-	ReminderDaysBefore *int    `json:"reminder_days_before" validate:"omitempty,min=1,max=30"`
-	DueDay             *int    `json:"due_day" validate:"omitempty,min=1,max=31"`
-	// EndPeriod dipakai alur "ubah nominal" (spec Phase 10 poin 6): tutup bill lama dengan
-	// set end_period ke bulan sebelum perubahan, lalu buat bill baru dengan amount baru.
-	// amount sendiri sengaja TIDAK ada di sini — itu selalu lewat bill baru, bukan edit di tempat.
+	IsActive           *bool    `json:"is_active"`
+	Name               *string  `json:"name" validate:"omitempty,max=255"`
+	Amount             *float64 `json:"amount" validate:"omitempty,gt=0"`
+	CategoryID         *string  `json:"category_id" validate:"omitempty,uuid"`
+	ReminderDaysBefore *int     `json:"reminder_days_before" validate:"omitempty,min=1,max=30"`
+	DueDay             *int     `json:"due_day" validate:"omitempty,min=1,max=31"`
+	// Perubahan amount/nama/kategori di sini langsung memengaruhi periode yang belum dibayar
+	// (periode acuan selalu memakai amount bill saat dibayar). Periode yang sudah dibayar
+	// tidak berubah karena transaksinya sudah tercatat dengan nominal lama.
 	EndPeriod *string `json:"end_period" validate:"omitempty,len=7"`
 }
 

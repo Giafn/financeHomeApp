@@ -82,11 +82,18 @@ func (r *GoalRepository) SumTransferAmount(ctx context.Context, goalID, linkedAc
 		accountColumn = "destination_account_id"
 	}
 
+	// Biaya admin dikurangi dari rekening sumber (konsisten dengan CalculateBalance akun):
+	// transfer keluar mengurangi amount + admin_fee, transfer masuk hanya amount yang diterima.
+	amountExpr := "amount"
+	if !asIncoming {
+		amountExpr = "amount + admin_fee"
+	}
+
 	var sum float64
 	err := dbOrTx(ctx, r.db).WithContext(ctx).
 		Table("transactions").
 		Where("goal_id = ? AND type = 'transfer' AND deleted_at IS NULL AND "+accountColumn+" = ?", goalID, linkedAccountID).
-		Select("COALESCE(SUM(amount), 0)").
+		Select("COALESCE(SUM(" + amountExpr + "), 0)").
 		Scan(&sum).Error
 	return sum, err
 }

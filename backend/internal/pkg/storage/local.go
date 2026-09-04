@@ -38,6 +38,15 @@ func (s *LocalStore) UploadURL(_ context.Context, filename, _ string) (string, s
 	return url, url, nil
 }
 
+// ReadURL mengimplementasikan Storage — untuk local store URL baca sama dengan
+// URL publik file (sudah bisa diakses tanpa autentikasi).
+func (s *LocalStore) ReadURL(_ context.Context, storedURL string) (string, error) {
+	if storedURL == "" {
+		return "", fmt.Errorf("URL kosong")
+	}
+	return storedURL, nil
+}
+
 // SaveKey menulis raw data ke disk untuk sebuah key yang dihasilkan UploadURL.
 // key divalidasi ketat agar tidak bisa path-traversal / menulis di luar Dir.
 func (s *LocalStore) SaveKey(key string, data []byte) (string, error) {

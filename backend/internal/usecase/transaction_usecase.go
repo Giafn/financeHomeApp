@@ -61,6 +61,7 @@ type TransactionInput struct {
 	DestinationAccountID *uuid.UUID
 	CategoryID           *uuid.UUID
 	Amount               float64
+	AdminFee             float64
 	Description          *string
 	TransactionDate      string
 	AttachmentURL        *string
@@ -160,6 +161,15 @@ func (u *TransactionUsecase) validate(ctx context.Context, householdID, userID u
 	return nil
 }
 
+// adminFeeForInput memastikan biaya admin hanya dipakai transaksi transfer —
+// income/expense selalu 0 supaya biaya admin tidak pernah tercatat di tipe lain.
+func (u *TransactionUsecase) adminFeeForInput(input TransactionInput) float64 {
+	if entity.TransactionType(input.Type) != entity.TransactionTransfer {
+		return 0
+	}
+	return input.AdminFee
+}
+
 func (u *TransactionUsecase) CreateTransaction(ctx context.Context, userID uuid.UUID, input TransactionInput) (*repository.TransactionListItem, error) {
 	member, err := u.householdRepo.FindMemberByUserID(ctx, userID)
 	if err != nil {
@@ -182,6 +192,7 @@ func (u *TransactionUsecase) CreateTransaction(ctx context.Context, userID uuid.
 		DestinationAccountID: input.DestinationAccountID,
 		CategoryID:           input.CategoryID,
 		Amount:               input.Amount,
+		AdminFee:             u.adminFeeForInput(input),
 		Description:          input.Description,
 		TransactionDate:      txDate,
 		AttachmentURL:        input.AttachmentURL,
@@ -277,6 +288,7 @@ func (u *TransactionUsecase) UpdateTransaction(ctx context.Context, userID, tran
 		DestinationAccountID: input.DestinationAccountID,
 		CategoryID:           input.CategoryID,
 		Amount:               input.Amount,
+		AdminFee:             u.adminFeeForInput(input),
 		Description:          input.Description,
 		TransactionDate:      txDate,
 		AttachmentURL:        input.AttachmentURL,

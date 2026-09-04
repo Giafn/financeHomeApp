@@ -68,6 +68,10 @@ func (r *BillRepository) ListIndefiniteActive(ctx context.Context) ([]*entity.Bi
 
 func (r *BillRepository) Update(ctx context.Context, bill *entity.Bill) error {
 	return dbOrTx(ctx, r.db).WithContext(ctx).Model(bill).
-		Select("is_active", "reminder_days_before", "due_day", "end_period").
+		Select("is_active", "name", "amount", "category_id", "reminder_days_before", "due_day", "end_period").
 		Updates(bill).Error
+}
+
+func (r *BillRepository) SoftDelete(ctx context.Context, id uuid.UUID) error {
+	return dbOrTx(ctx, r.db).WithContext(ctx).Delete(&entity.Bill{}, "id = ?", id).Error
 }

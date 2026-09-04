@@ -12,6 +12,7 @@ import (
 	"homeapp/internal/delivery/http/middleware"
 	"homeapp/internal/pkg/apperror"
 	"homeapp/internal/pkg/response"
+	"homeapp/internal/pkg/storage"
 	"homeapp/internal/repository"
 	"homeapp/internal/usecase"
 )
@@ -19,12 +20,14 @@ import (
 type TransactionHandler struct {
 	transactionUsecase *usecase.TransactionUsecase
 	validator          *validator.Validate
+	store              storage.Storage
 }
 
-func NewTransactionHandler(transactionUsecase *usecase.TransactionUsecase, validator *validator.Validate) *TransactionHandler {
+func NewTransactionHandler(transactionUsecase *usecase.TransactionUsecase, validator *validator.Validate, store storage.Storage) *TransactionHandler {
 	return &TransactionHandler{
 		transactionUsecase: transactionUsecase,
 		validator:          validator,
+		store:              store,
 	}
 }
 
@@ -72,7 +75,7 @@ func (h *TransactionHandler) CreateTransaction(c fiber.Ctx) error {
 		return response.Error(c, fiber.StatusBadRequest, "Validasi gagal: "+err.Error())
 	}
 
-	input, err := parseTransactionInput(req.Type, req.AccountID, req.DestinationAccountID, req.CategoryID, req.Amount, req.Description, req.TransactionDate, req.AttachmentURL, req.GoalID)
+	input, err := parseTransactionInput(req.Type, req.AccountID, req.DestinationAccountID, req.CategoryID, req.Amount, req.AdminFee, req.Description, req.TransactionDate, req.AttachmentURL, req.GoalID)
 	if err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "Format ID atau tanggal tidak valid")
 	}
@@ -82,7 +85,9 @@ func (h *TransactionHandler) CreateTransaction(c fiber.Ctx) error {
 		return mapTransactionErr(c, err)
 	}
 
-	return response.Success(c, fiber.StatusCreated, "Transaksi berhasil dibuat", mapTransactionToResponse(item))
+	trx := mapTransactionToResponse(item)
+	trx.AttachmentURL = h.resolveAttachmentURL(c, trx.AttachmentURL)
+	return response.Success(c, fiber.StatusCreated, "Transaksi berhasil dibuat", trx)
 }
 
 // ListTransactions godoc
@@ -157,6 +162,7 @@ func (h *TransactionHandler) ListTransactions(c fiber.Ctx) error {
 	responses := make([]dto.TransactionResponse, len(items))
 	for i, item := range items {
 		responses[i] = *mapTransactionToResponse(item)
+		responses[i].AttachmentURL = h.resolveAttachmentURL(c, responses[i].AttachmentURL)
 	}
 
 	return response.Success(c, fiber.StatusOK, "ok", dto.TransactionListResponse{
@@ -192,7 +198,10 @@ func (h *TransactionHandler) GetTransaction(c fiber.Ctx) error {
 		return mapTransactionErr(c, err)
 	}
 
-	return response.Success(c, fiber.StatusOK, "ok", mapTransactionToResponse(item))
+	trx := mapTransactionToResponse(item)
+	trx.AttachmentURL = h.resolveAttachmentURL(c, trx.AttachmentURL)
+
+	return response.Success(c, fiber.StatusOK, "ok", trx)
 }
 
 // UpdateTransaction godoc
@@ -249,6 +258,10 @@ func (h *TransactionHandler) UpdateTransaction(c fiber.Ctx) error {
 	if req.Amount != nil {
 		amount = *req.Amount
 	}
+	adminFee := existing.AdminFee
+	if req.AdminFee != nil {
+		adminFee = *req.AdminFee
+	}
 	description := existing.Description
 	if req.Description != nil {
 		description = req.Description
@@ -266,7 +279,7 @@ func (h *TransactionHandler) UpdateTransaction(c fiber.Ctx) error {
 		goalID = req.GoalID
 	}
 
-	input, err := parseTransactionInput(txType, accountID, destAccountID, categoryID, amount, description, transactionDate, attachmentURL, goalID)
+	input, err := parseTransactionInput(txType, accountID, destAccountID, categoryID, amount, adminFee, description, transactionDate, attachmentURL, goalID)
 	if err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "Format ID atau tanggal tidak valid")
 	}
@@ -276,7 +289,9 @@ func (h *TransactionHandler) UpdateTransaction(c fiber.Ctx) error {
 		return mapTransactionErr(c, err)
 	}
 
-	return response.Success(c, fiber.StatusOK, "ok", mapTransactionToResponse(item))
+	trx := mapTransactionToResponse(item)
+	trx.AttachmentURL = h.resolveAttachmentURL(c, trx.AttachmentURL)
+	return response.Success(c, fiber.StatusOK, "ok", trx)
 }
 
 // DeleteTransaction godoc
@@ -329,7 +344,7 @@ func (h *TransactionHandler) GetQuickSelect(c fiber.Ctx) error {
 
 const dateLayoutConst = "2006-01-02"
 
-func parseTransactionInput(txType, accountID string, destAccountID, categoryID *string, amount float64, description *string, transactionDate string, attachmentURL *string, goalID *string) (*usecase.TransactionInput, error) {
+func parseTransactionInput(txType, accountID string, destAccountID, categoryID *string, amount, adminFee float64, description *string, transactionDate string, attachmentURL *string, goalID *string) (*usecase.TransactionInput, error) {
 	accID, err := uuid.Parse(accountID)
 	if err != nil {
 		return nil, err
@@ -339,6 +354,7 @@ func parseTransactionInput(txType, accountID string, destAccountID, categoryID *
 		Type:            txType,
 		AccountID:       accID,
 		Amount:          amount,
+		AdminFee:        adminFee,
 		Description:     description,
 		TransactionDate: transactionDate,
 		AttachmentURL:   attachmentURL,
@@ -383,6 +399,20 @@ func uuidPtrToStrPtr(id *uuid.UUID) *string {
 	return &s
 }
 
+// resolveAttachmentURL mengubah attachment_url ter-stored (yang berisi path S3
+// tanpa autentikasi) menjadi URL yang bisa diakses client. Untuk S3 ini diganti
+// dengan presigned GET URL; untuk local store dibiarkan apa adanya.
+func (h *TransactionHandler) resolveAttachmentURL(c fiber.Ctx, url *string) *string {
+	if url == nil || *url == "" || h.store == nil {
+		return url
+	}
+	resolved, err := h.store.ReadURL(c.Context(), *url)
+	if err != nil {
+		return url
+	}
+	return &resolved
+}
+
 func mapTransactionToResponse(item *repository.TransactionListItem) *dto.TransactionResponse {
 	return &dto.TransactionResponse{
 		ID:                   item.ID.String(),
@@ -394,6 +424,7 @@ func mapTransactionToResponse(item *repository.TransactionListItem) *dto.Transac
 		CategoryID:           uuidPtrToStrPtr(item.CategoryID),
 		CategoryName:         item.CategoryName,
 		Amount:               item.Amount,
+		AdminFee:             item.AdminFee,
 		Description:          item.Description,
 		TransactionDate:      item.TransactionDate.Format(dateLayoutConst),
 		AttachmentURL:        item.AttachmentURL,

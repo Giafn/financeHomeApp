@@ -104,7 +104,7 @@ func (r *TransactionRepository) List(ctx context.Context, householdID uuid.UUID,
 
 func (r *TransactionRepository) Update(ctx context.Context, transaction *entity.Transaction) error {
 	return dbOrTx(ctx, r.db).WithContext(ctx).Model(transaction).
-		Select("type", "account_id", "destination_account_id", "category_id", "amount", "description", "transaction_date", "attachment_url", "goal_id").
+		Select("type", "account_id", "destination_account_id", "category_id", "amount", "admin_fee", "description", "transaction_date", "attachment_url", "goal_id").
 		Updates(transaction).Error
 }
 

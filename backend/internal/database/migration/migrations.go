@@ -238,6 +238,33 @@ var Migrations = []*gormigrate.Migration{
 		},
 	},
 	{
+		ID: "20260831000002_add_admin_fee_to_transactions",
+		Migrate: func(tx *gorm.DB) error {
+			return tx.Exec(`
+				ALTER TABLE transactions
+				ADD COLUMN IF NOT EXISTS admin_fee numeric(18,2) NOT NULL DEFAULT 0
+			`).Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return tx.Exec(`ALTER TABLE transactions DROP COLUMN IF EXISTS admin_fee`).Error
+		},
+	},
+	{
+		ID: "20260831000003_fix_budget_period_unique_index_soft_delete",
+		Migrate: func(tx *gorm.DB) error {
+			_ = tx.Migrator().DropIndex(&entity.Budget{}, "idx_budget_period")
+			return tx.Exec(`
+				CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS idx_uq_budget_period_active
+				ON budgets(household_id, category_id, period)
+				WHERE deleted_at IS NULL
+			`).Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			_ = tx.Exec(`DROP INDEX IF EXISTS idx_uq_budget_period_active`).Error
+			return tx.Migrator().CreateIndex(&entity.Budget{}, "idx_budget_period")
+		},
+	},
+	{
 		ID: "20260901000001_add_category_parent_id",
 		Migrate: func(tx *gorm.DB) error {
 			// Sub-kategori (parent_id nullable, self-referencing) — kolom baru, default NULL,
