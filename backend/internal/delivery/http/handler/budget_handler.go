@@ -27,7 +27,8 @@ func mapBudgetErr(c fiber.Ctx, err error) error {
 	switch {
 	case errors.Is(err, apperror.ErrNotFound):
 		return response.Error(c, fiber.StatusNotFound, "Budget atau kategori tidak ditemukan")
-	case errors.Is(err, apperror.ErrCategoryNotExpense):
+	case errors.Is(err, apperror.ErrCategoryNotExpense),
+		errors.Is(err, apperror.ErrCategoryHasChildren):
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	case errors.Is(err, apperror.ErrInvalidPeriodFormat):
 		return response.Error(c, fiber.StatusBadRequest, err.Error())

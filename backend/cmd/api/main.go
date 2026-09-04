@@ -72,7 +72,8 @@ func main() {
 	billRepo := postgresRepo.NewBillRepository(db)
 	billPeriodRepo := postgresRepo.NewBillPeriodRepository(db)
 	billUsecase := usecase.NewBillUsecase(billRepo, billPeriodRepo, categoryRepo, accountRepo, householdRepo, transactionUsecase)
-	dashboardUsecase := usecase.NewDashboardUsecase(accountUsecase, budgetUsecase, goalUsecase, transactionUsecase, householdRepo, transactionRepo, billPeriodRepo)
+	budgetPlanUsecase := usecase.NewBudgetPlanUsecase(budgetRepo, billPeriodRepo, transactionRepo, householdRepo, accountUsecase)
+	dashboardUsecase := usecase.NewDashboardUsecase(accountUsecase, budgetUsecase, goalUsecase, transactionUsecase, budgetPlanUsecase, householdRepo, transactionRepo, billPeriodRepo)
 	reportUsecase := usecase.NewReportUsecase(transactionRepo, householdRepo)
 
 	// Penyimpanan lampiran: S3 (presigned, client upload langsung ke bucket) atau
@@ -125,6 +126,7 @@ func main() {
 		Bill:        handler.NewBillHandler(billUsecase, validate),
 		Dashboard:   handler.NewDashboardHandler(dashboardUsecase),
 		Report:      handler.NewReportHandler(reportUsecase),
+		BudgetPlan:  handler.NewBudgetPlanHandler(budgetPlanUsecase),
 	}
 
 	app := fiber.New(fiber.Config{

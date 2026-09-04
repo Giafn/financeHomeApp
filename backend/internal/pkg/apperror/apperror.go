@@ -33,4 +33,10 @@ var (
 
 	ErrInvalidPeriodType   = errors.New("period_type harus 'month' atau 'year'")
 	ErrInvalidExportFormat = errors.New("format export harus 'pdf' atau 'excel'")
+
+	ErrCategoryNestingTooDeep    = errors.New("sub-kategori tidak boleh punya sub-kategori sendiri (maksimal 2 tingkat)")
+	ErrCategoryParentTypeMismatch = errors.New("sub-kategori harus punya tipe yang sama dengan kategori induk")
+	ErrCategoryHasChildren       = errors.New("kategori ini punya sub-kategori, budget/tagihan harus diarahkan ke sub-kategori")
+
+	ErrPersonalAccountForbidden = errors.New("akun ini milik pribadi anggota lain, anda tidak punya akses transaksi ke akun ini")
 )

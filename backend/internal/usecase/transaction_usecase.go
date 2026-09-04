@@ -70,10 +70,42 @@ type TransactionInput struct {
 	BillPeriodID *uuid.UUID
 }
 
+// checkPersonalAccountAccess menolak akun personal (owner_type='personal') yang bukan milik
+// userID — akun household tetap bebas dipakai anggota manapun (perilaku lama, tidak berubah).
+func checkPersonalAccountAccess(account *entity.Account, userID uuid.UUID) error {
+	if account.OwnerType == entity.AccountOwnerPersonal && (account.OwnerUserID == nil || *account.OwnerUserID != userID) {
+		return apperror.ErrPersonalAccountForbidden
+	}
+	return nil
+}
+
+// authorizeExistingAccounts menolak edit/hapus transaksi yang nyentuh akun personal milik
+// anggota lain — dipanggil sebelum validate() supaya transaksi lama juga terlindungi, bukan
+// cuma akun baru yang dikirim di input update.
+func (u *TransactionUsecase) authorizeExistingAccounts(ctx context.Context, userID, accountID uuid.UUID, destinationAccountID *uuid.UUID) error {
+	account, err := u.accountRepo.FindByID(ctx, accountID)
+	if err != nil {
+		return err
+	}
+	if err := checkPersonalAccountAccess(account, userID); err != nil {
+		return err
+	}
+	if destinationAccountID != nil {
+		dest, err := u.accountRepo.FindByID(ctx, *destinationAccountID)
+		if err != nil {
+			return err
+		}
+		if err := checkPersonalAccountAccess(dest, userID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // validate menegakkan aturan bisnis inti Phase 06 §4: kategori wajib+cocok tipe untuk
 // income/expense, akun tujuan wajib+beda untuk transfer, dan semua akun harus milik
-// household ini serta aktif.
-func (u *TransactionUsecase) validate(ctx context.Context, householdID uuid.UUID, input TransactionInput) error {
+// household ini serta aktif. Juga menolak transaksi ke akun personal milik anggota lain.
+func (u *TransactionUsecase) validate(ctx context.Context, householdID, userID uuid.UUID, input TransactionInput) error {
 	account, err := u.accountRepo.FindByID(ctx, input.AccountID)
 	if err != nil {
 		return err
@@ -83,6 +115,9 @@ func (u *TransactionUsecase) validate(ctx context.Context, householdID uuid.UUID
 	}
 	if !account.IsActive {
 		return apperror.ErrAccountInactive
+	}
+	if err := checkPersonalAccountAccess(account, userID); err != nil {
+		return err
 	}
 
 	switch entity.TransactionType(input.Type) {
@@ -117,6 +152,9 @@ func (u *TransactionUsecase) validate(ctx context.Context, householdID uuid.UUID
 		if !destAccount.IsActive {
 			return apperror.ErrAccountInactive
 		}
+		if err := checkPersonalAccountAccess(destAccount, userID); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -128,7 +166,7 @@ func (u *TransactionUsecase) CreateTransaction(ctx context.Context, userID uuid.
 		return nil, err
 	}
 
-	if err := u.validate(ctx, member.HouseholdID, input); err != nil {
+	if err := u.validate(ctx, member.HouseholdID, userID, input); err != nil {
 		return nil, err
 	}
 
@@ -214,7 +252,13 @@ func (u *TransactionUsecase) UpdateTransaction(ctx context.Context, userID, tran
 		return nil, err
 	}
 
-	if err := u.validate(ctx, member.HouseholdID, input); err != nil {
+	// Transaksi lama yang nyentuh akun personal orang lain gak boleh diedit siapapun selain
+	// pemilik akun — dicek dari akun LAMA dulu, baru validate() cek akun BARU (input bisa ganti akun).
+	if err := u.authorizeExistingAccounts(ctx, userID, existing.AccountID, existing.DestinationAccountID); err != nil {
+		return nil, err
+	}
+
+	if err := u.validate(ctx, member.HouseholdID, userID, input); err != nil {
 		return nil, err
 	}
 
@@ -266,6 +310,14 @@ func (u *TransactionUsecase) DeleteTransaction(ctx context.Context, userID, tran
 
 	existing, err := u.transactionRepo.FindByID(ctx, transactionID, member.HouseholdID)
 	if err != nil {
+		return err
+	}
+
+	if existing.CreatedBy != userID {
+		return apperror.ErrForbidden
+	}
+
+	if err := u.authorizeExistingAccounts(ctx, userID, existing.AccountID, existing.DestinationAccountID); err != nil {
 		return err
 	}
 

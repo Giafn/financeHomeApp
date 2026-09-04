@@ -67,7 +67,32 @@ func (u *CategoryUsecase) SeedDefaultCategories(ctx context.Context, householdID
 	return nil
 }
 
-func (u *CategoryUsecase) CreateCategory(ctx context.Context, householdID, userID uuid.UUID, name, categoryType string, icon, color *string) (*entity.Category, error) {
+// validateParent menegakkan aturan sub-kategori: induk harus ada di household yang sama,
+// bertipe sama, dan belum jadi anak kategori lain (maks 2 tingkat, tidak ada cucu).
+func (u *CategoryUsecase) validateParent(ctx context.Context, householdID uuid.UUID, categoryType string, parentID uuid.UUID) error {
+	parent, err := u.categoryRepo.FindByID(ctx, parentID, householdID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return apperror.ErrNotFound
+		}
+		return err
+	}
+	if string(parent.Type) != categoryType {
+		return apperror.ErrCategoryParentTypeMismatch
+	}
+	if parent.ParentID != nil {
+		return apperror.ErrCategoryNestingTooDeep
+	}
+	return nil
+}
+
+func (u *CategoryUsecase) CreateCategory(ctx context.Context, householdID, userID uuid.UUID, name, categoryType string, icon, color *string, parentID *uuid.UUID) (*entity.Category, error) {
+	if parentID != nil {
+		if err := u.validateParent(ctx, householdID, categoryType, *parentID); err != nil {
+			return nil, err
+		}
+	}
+
 	category := &entity.Category{
 		BaseModel: entity.BaseModel{
 			ID: uuid.New(),
@@ -78,6 +103,7 @@ func (u *CategoryUsecase) CreateCategory(ctx context.Context, householdID, userI
 		Icon:        icon,
 		Color:       color,
 		IsArchived:  false,
+		ParentID:    parentID,
 		CreatedBy:   userID,
 	}
 
@@ -114,7 +140,7 @@ func (u *CategoryUsecase) ListCategories(ctx context.Context, householdID uuid.U
 
 // UpdateCategory tidak menerima parameter type — spec melarang ubah type via PATCH umum
 // (perlu cek category_id dipakai transaksi atau tidak, baru tersedia di Phase 06).
-func (u *CategoryUsecase) UpdateCategory(ctx context.Context, categoryID, householdID uuid.UUID, name *string, icon, color *string, isArchived *bool) (*entity.Category, error) {
+func (u *CategoryUsecase) UpdateCategory(ctx context.Context, categoryID, householdID uuid.UUID, name *string, icon, color *string, isArchived *bool, parentID *uuid.UUID) (*entity.Category, error) {
 	category, err := u.categoryRepo.FindByID(ctx, categoryID, householdID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -134,6 +160,19 @@ func (u *CategoryUsecase) UpdateCategory(ctx context.Context, categoryID, househ
 	}
 	if isArchived != nil {
 		category.IsArchived = *isArchived
+	}
+	if parentID != nil {
+		if err := u.validateParent(ctx, householdID, string(category.Type), *parentID); err != nil {
+			return nil, err
+		}
+		hasChildren, err := u.categoryRepo.HasChildren(ctx, categoryID, householdID)
+		if err != nil {
+			return nil, err
+		}
+		if hasChildren {
+			return nil, apperror.ErrCategoryHasChildren
+		}
+		category.ParentID = parentID
 	}
 
 	if err := u.categoryRepo.Update(ctx, category); err != nil {

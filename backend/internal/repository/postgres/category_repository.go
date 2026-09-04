@@ -48,7 +48,7 @@ func (r *CategoryRepository) ListByHousehold(ctx context.Context, householdID uu
 
 func (r *CategoryRepository) Update(ctx context.Context, category *entity.Category) error {
 	return r.db.WithContext(ctx).Model(category).
-		Select("name", "icon", "color", "is_archived").
+		Select("name", "icon", "color", "is_archived", "parent_id").
 		Updates(category).Error
 }
 
@@ -62,4 +62,12 @@ func (r *CategoryRepository) Unarchive(ctx context.Context, id, householdID uuid
 	return r.db.WithContext(ctx).Model(&entity.Category{}).
 		Where("id = ? AND household_id = ?", id, householdID).
 		Update("is_archived", false).Error
+}
+
+func (r *CategoryRepository) HasChildren(ctx context.Context, id, householdID uuid.UUID) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&entity.Category{}).
+		Where("parent_id = ? AND household_id = ? AND deleted_at IS NULL", id, householdID).
+		Count(&count).Error
+	return count > 0, err
 }

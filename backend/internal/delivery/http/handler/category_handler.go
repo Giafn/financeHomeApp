@@ -33,6 +33,19 @@ func NewCategoryHandler(
 	}
 }
 
+func mapCategoryErr(c fiber.Ctx, err error) error {
+	switch {
+	case errors.Is(err, apperror.ErrNotFound):
+		return response.Error(c, fiber.StatusNotFound, "Kategori atau kategori induk tidak ditemukan")
+	case errors.Is(err, apperror.ErrCategoryParentTypeMismatch),
+		errors.Is(err, apperror.ErrCategoryNestingTooDeep),
+		errors.Is(err, apperror.ErrCategoryHasChildren):
+		return response.Error(c, fiber.StatusBadRequest, err.Error())
+	default:
+		return response.Error(c, fiber.StatusInternalServerError, "Gagal memproses kategori")
+	}
+}
+
 // CreateCategory godoc
 //
 //	@Summary		Create a new category
@@ -63,6 +76,15 @@ func (h *CategoryHandler) CreateCategory(c fiber.Ctx) error {
 		return response.Error(c, fiber.StatusBadRequest, "Validasi gagal: "+err.Error())
 	}
 
+	var parentID *uuid.UUID
+	if req.ParentID != nil {
+		id, err := uuid.Parse(*req.ParentID)
+		if err != nil {
+			return response.Error(c, fiber.StatusBadRequest, "ID kategori induk tidak valid")
+		}
+		parentID = &id
+	}
+
 	category, err := h.categoryUsecase.CreateCategory(
 		c.Context(),
 		member.HouseholdID,
@@ -71,9 +93,10 @@ func (h *CategoryHandler) CreateCategory(c fiber.Ctx) error {
 		req.Type,
 		req.Icon,
 		req.Color,
+		parentID,
 	)
 	if err != nil {
-		return response.Error(c, fiber.StatusInternalServerError, "Gagal membuat kategori")
+		return mapCategoryErr(c, err)
 	}
 
 	return response.Success(c, fiber.StatusCreated, "Kategori berhasil dibuat", mapCategoryToResponse(category))
@@ -148,6 +171,18 @@ func (h *CategoryHandler) UpdateCategory(c fiber.Ctx) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "Format request tidak valid")
 	}
+	if err := h.validator.Struct(req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, "Validasi gagal: "+err.Error())
+	}
+
+	var parentID *uuid.UUID
+	if req.ParentID != nil {
+		id, err := uuid.Parse(*req.ParentID)
+		if err != nil {
+			return response.Error(c, fiber.StatusBadRequest, "ID kategori induk tidak valid")
+		}
+		parentID = &id
+	}
 
 	category, err := h.categoryUsecase.UpdateCategory(
 		c.Context(),
@@ -157,12 +192,10 @@ func (h *CategoryHandler) UpdateCategory(c fiber.Ctx) error {
 		req.Icon,
 		req.Color,
 		req.IsArchived,
+		parentID,
 	)
 	if err != nil {
-		if errors.Is(err, apperror.ErrNotFound) {
-			return response.Error(c, fiber.StatusNotFound, "Kategori tidak ditemukan")
-		}
-		return response.Error(c, fiber.StatusInternalServerError, "Gagal update kategori")
+		return mapCategoryErr(c, err)
 	}
 
 	return response.Success(c, fiber.StatusOK, "ok", mapCategoryToResponse(category))
@@ -243,15 +276,20 @@ func (h *CategoryHandler) UnarchiveCategory(c fiber.Ctx) error {
 }
 
 func mapCategoryToResponse(category *entity.Category) *dto.CategoryResponse {
-	return &dto.CategoryResponse{
-		ID:         category.ID.String(),
+	resp := &dto.CategoryResponse{
+		ID:          category.ID.String(),
 		HouseholdID: category.HouseholdID.String(),
-		Name:       category.Name,
-		Type:       string(category.Type),
-		Icon:       category.Icon,
-		Color:      category.Color,
-		IsArchived: category.IsArchived,
-		CreatedBy:  category.CreatedBy.String(),
-		CreatedAt:  category.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		Name:        category.Name,
+		Type:        string(category.Type),
+		Icon:        category.Icon,
+		Color:       category.Color,
+		IsArchived:  category.IsArchived,
+		CreatedBy:   category.CreatedBy.String(),
+		CreatedAt:   category.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
+	if category.ParentID != nil {
+		id := category.ParentID.String()
+		resp.ParentID = &id
+	}
+	return resp
 }

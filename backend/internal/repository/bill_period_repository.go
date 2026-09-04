@@ -37,4 +37,7 @@ type BillPeriodRepository interface {
 	ListOverdue(ctx context.Context, today time.Time) ([]*entity.BillPeriod, error)
 	// ListUpcomingForHousehold period upcoming dalam `days` hari ke depan untuk 1 household — dashboard (Phase 11).
 	ListUpcomingForHousehold(ctx context.Context, householdID uuid.UUID, days int) ([]*BillPeriodWithBill, error)
+	// ListUnpaidByHouseholdAndPeriod period (upcoming/overdue, belum 'paid') untuk 1 household di 1
+	// periode tertentu — dipakai endpoint Rencana Anggaran (gabungan budget+bills).
+	ListUnpaidByHouseholdAndPeriod(ctx context.Context, householdID uuid.UUID, period string) ([]*BillPeriodWithBill, error)
 }

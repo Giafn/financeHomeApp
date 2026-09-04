@@ -92,6 +92,13 @@ func (u *BillUsecase) CreateBill(ctx context.Context, userID uuid.UUID, name str
 	if category.Type != entity.CategoryExpense {
 		return nil, nil, apperror.ErrCategoryNotExpense
 	}
+	hasChildren, err := u.categoryRepo.HasChildren(ctx, categoryID, member.HouseholdID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if hasChildren {
+		return nil, nil, apperror.ErrCategoryHasChildren
+	}
 
 	if !periodPattern.MatchString(startPeriod) {
 		return nil, nil, apperror.ErrInvalidPeriodFormat

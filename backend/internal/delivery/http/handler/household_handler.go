@@ -56,7 +56,7 @@ func (h *HouseholdHandler) Create(c fiber.Ctx) error {
 	}
 
 	return response.Success(c, fiber.StatusCreated, "rumah tangga berhasil dibuat", dto.HouseholdResponse{
-		ID: household.ID.String(), Name: household.Name,
+		ID: household.ID.String(), Name: household.Name, BudgetCycleStartDay: household.BudgetCycleStartDay,
 	})
 }
 
@@ -92,7 +92,7 @@ func (h *HouseholdHandler) Join(c fiber.Ctx) error {
 	}
 
 	return response.Success(c, fiber.StatusOK, "berhasil bergabung ke rumah tangga", dto.HouseholdResponse{
-		ID: household.ID.String(), Name: household.Name,
+		ID: household.ID.String(), Name: household.Name, BudgetCycleStartDay: household.BudgetCycleStartDay,
 	})
 }
 
@@ -171,7 +171,7 @@ func (h *HouseholdHandler) UpdateName(c fiber.Ctx) error {
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	}
 
-	if err := h.householdUsecase.UpdateHouseholdName(c.Context(), userID, householdID, req.Name); err != nil {
+	if err := h.householdUsecase.UpdateHouseholdName(c.Context(), userID, householdID, req.Name, req.BudgetCycleStartDay); err != nil {
 		if errors.Is(err, apperror.ErrForbidden) {
 			return response.Error(c, fiber.StatusForbidden, err.Error())
 		}

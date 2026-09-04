@@ -19,6 +19,9 @@ interface Account {
   initial_balance: number;
   current_balance: number;
   is_active: boolean;
+  owner_type: 'household' | 'personal';
+  owner_user_id?: string | null;
+  is_owned_by_me: boolean;
 }
 
 export default function AccountsPage() {
@@ -31,11 +34,18 @@ export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
     type: 'bank' as 'bank' | 'ewallet' | 'cash' | 'other',
     initial_balance: '',
+    owner_type: 'household' as 'household' | 'personal',
+  });
+
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    owner_type: 'household' as 'household' | 'personal',
   });
 
   useEffect(() => {
@@ -81,12 +91,13 @@ export default function AccountsPage() {
           name: formData.name,
           type: formData.type,
           initial_balance: parseFloat(formData.initial_balance),
+          owner_type: formData.owner_type,
         }),
       });
 
       setAccounts([...accounts, newAccount]);
       setSuccess('Akun berhasil dibuat');
-      setFormData({ name: '', type: 'bank', initial_balance: '' });
+      setFormData({ name: '', type: 'bank', initial_balance: '', owner_type: 'household' });
       setShowModal(false);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -126,6 +137,49 @@ export default function AccountsPage() {
     } finally {
       setUpdating(false);
       setTogglingId(null);
+    }
+  };
+
+  const openEditModal = (account: Account) => {
+    setEditingAccount(account);
+    setEditFormData({ name: account.name, owner_type: account.owner_type });
+    setError('');
+  };
+
+  const handleEditAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAccount || !editFormData.name.trim()) {
+      setError('Nama akun diperlukan');
+      return;
+    }
+
+    setError('');
+    setSuccess('');
+    setUpdating(true);
+
+    try {
+      await apiCall(`/accounts/${editingAccount.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: editFormData.name,
+          owner_type: editFormData.owner_type,
+        }),
+      });
+
+      // Refetch (bukan optimistic patch) — owner_user_id/is_owned_by_me ditentukan server-side
+      // saat ganti kepemilikan, lebih aman ambil ulang daripada nebak di client.
+      const refreshed = await apiCall<Account[]>('/accounts?include_inactive=true');
+      setAccounts(refreshed || []);
+      setSuccess('Akun berhasil diupdate');
+      setEditingAccount(null);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Gagal update akun');
+      }
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -192,17 +246,24 @@ export default function AccountsPage() {
             {accounts.map((account) => (
               <Card key={account.id} className={!account.is_active ? 'opacity-50' : ''}>
                 <div className="flex items-start justify-between gap-2 mb-4">
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="p-2 bg-base-100 rounded-full text-primary">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="p-2 bg-base-100 rounded-full text-primary shrink-0">
                       {getTypeIcon(account.type)}
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-base-content">{account.name}</h3>
-                      <p className="text-xs text-base-content/60 capitalize">{account.type}</p>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-base-content truncate">{account.name}</h3>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-xs text-base-content/60 capitalize">{account.type}</p>
+                        {account.owner_type === 'personal' && (
+                          <span className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded-full">
+                            {account.is_owned_by_me ? 'Pribadi' : 'Pribadi (Anggota Lain)'}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   {!account.is_active && (
-                    <span className="text-xs px-2 py-1 bg-base-300 text-base-content/60 rounded-full">
+                    <span className="text-xs px-2 py-1 bg-base-300 text-base-content/60 rounded-full whitespace-nowrap shrink-0">
                       Nonaktif
                     </span>
                   )}
@@ -219,7 +280,17 @@ export default function AccountsPage() {
                   </p>
                 </div>
 
-                <div className="pt-4 border-t border-base-300">
+                <div className="pt-4 border-t border-base-300 flex gap-2">
+                  {account.is_owned_by_me && (
+                    <Button
+                      variant="ghost"
+                      fullWidth
+                      onClick={() => openEditModal(account)}
+                      disabled={updating}
+                    >
+                      Edit
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     fullWidth
@@ -286,6 +357,22 @@ export default function AccountsPage() {
                 />
               </FormField>
 
+              <FormField label="Kepemilikan">
+                <Select
+                  value={formData.owner_type}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      owner_type: e.target.value as 'household' | 'personal',
+                    })
+                  }
+                  disabled={updating}
+                >
+                  <option value="household">Milik Bersama (Keluarga)</option>
+                  <option value="personal">Milik Pribadi (cuma saya)</option>
+                </Select>
+              </FormField>
+
               <div className="flex gap-3 pt-4">
                 <Button
                   type="button"
@@ -293,7 +380,7 @@ export default function AccountsPage() {
                   fullWidth
                   onClick={() => {
                     setShowModal(false);
-                    setFormData({ name: '', type: 'bank', initial_balance: '' });
+                    setFormData({ name: '', type: 'bank', initial_balance: '', owner_type: 'household' });
                     setError('');
                   }}
                   disabled={updating}
@@ -308,6 +395,70 @@ export default function AccountsPage() {
                     </>
                   ) : (
                     'Buat'
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editingAccount && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-4">
+          <Card className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl">
+            <h2 className="text-xl sm:text-2xl font-bold text-base-content mb-6">Edit Akun</h2>
+
+            <form onSubmit={handleEditAccount} className="flex flex-col gap-4">
+              {error && <Alert type="error" message={error} />}
+
+              <FormField label="Nama Akun">
+                <Input
+                  type="text"
+                  required
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  disabled={updating}
+                />
+              </FormField>
+
+              <FormField label="Kepemilikan">
+                <Select
+                  value={editFormData.owner_type}
+                  onChange={(e) =>
+                    setEditFormData({
+                      ...editFormData,
+                      owner_type: e.target.value as 'household' | 'personal',
+                    })
+                  }
+                  disabled={updating}
+                >
+                  <option value="household">Milik Bersama (Keluarga)</option>
+                  <option value="personal">Milik Pribadi (cuma saya)</option>
+                </Select>
+              </FormField>
+
+              <div className="flex gap-3 pt-4">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  fullWidth
+                  onClick={() => {
+                    setEditingAccount(null);
+                    setError('');
+                  }}
+                  disabled={updating}
+                >
+                  Batal
+                </Button>
+                <Button type="submit" fullWidth disabled={updating}>
+                  {updating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Menyimpan...
+                    </>
+                  ) : (
+                    'Simpan'
                   )}
                 </Button>
               </div>

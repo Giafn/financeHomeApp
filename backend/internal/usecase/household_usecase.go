@@ -163,15 +163,18 @@ func (u *HouseholdUsecase) GetHouseholdDetail(ctx context.Context, userID uuid.U
 	}
 
 	return map[string]interface{}{
-		"id":            household.ID,
-		"name":          household.Name,
-		"role":          member.Role,
-		"member_count":  len(members),
+		"id":                     household.ID,
+		"name":                   household.Name,
+		"role":                   member.Role,
+		"member_count":           len(members),
+		"budget_cycle_start_day": household.BudgetCycleStartDay,
 	}, nil
 }
 
-// UpdateHouseholdName update nama household. Hanya owner yang boleh.
-func (u *HouseholdUsecase) UpdateHouseholdName(ctx context.Context, userID uuid.UUID, householdID uuid.UUID, newName string) error {
+// UpdateHouseholdName update nama dan/atau budget_cycle_start_day household. Hanya owner yang
+// boleh. Kedua field opsional (nil = tidak diubah) supaya bisa update salah satu tanpa
+// mengirim ulang yang lain.
+func (u *HouseholdUsecase) UpdateHouseholdName(ctx context.Context, userID uuid.UUID, householdID uuid.UUID, newName *string, budgetCycleStartDay *int) error {
 	member, err := u.householdRepo.FindMemberByUserID(ctx, userID)
 	if err != nil {
 		return apperror.ErrNotFound
@@ -188,7 +191,12 @@ func (u *HouseholdUsecase) UpdateHouseholdName(ctx context.Context, userID uuid.
 		return err
 	}
 
-	household.Name = newName
+	if newName != nil {
+		household.Name = *newName
+	}
+	if budgetCycleStartDay != nil {
+		household.BudgetCycleStartDay = *budgetCycleStartDay
+	}
 	return u.householdRepo.Update(ctx, household)
 }
 

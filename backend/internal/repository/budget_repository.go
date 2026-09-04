@@ -18,12 +18,11 @@ type BudgetRepository interface {
 	Create(ctx context.Context, budget *entity.Budget) error
 	FindByID(ctx context.Context, id, householdID uuid.UUID) (*entity.Budget, error)
 	FindByCategoryPeriod(ctx context.Context, householdID, categoryID uuid.UUID, period string) (*entity.Budget, error)
-	ListByPeriod(ctx context.Context, householdID uuid.UUID, period string) ([]*BudgetWithSpent, error)
+	// ListByPeriod — cycleStartDay dari household menentukan window transaksi yang dihitung
+	// sebagai "spent" (lihat internal/pkg/period). cycleStartDay<=1 = window kalender biasa.
+	ListByPeriod(ctx context.Context, householdID uuid.UUID, period string, cycleStartDay int) ([]*BudgetWithSpent, error)
 	// ListRawByPeriod dipakai job auto-copy — baris budget mentah tanpa agregasi spent.
 	ListRawByPeriod(ctx context.Context, householdID uuid.UUID, period string) ([]*entity.Budget, error)
 	Update(ctx context.Context, budget *entity.Budget) error
 	Delete(ctx context.Context, id, householdID uuid.UUID) error
-	// ListHouseholdIDsWithBudgetForPeriod dipakai job (auto-copy & alert-check) supaya
-	// hanya household yang benar-benar pakai fitur budget yang diproses, bukan semua household.
-	ListHouseholdIDsWithBudgetForPeriod(ctx context.Context, period string) ([]uuid.UUID, error)
 }

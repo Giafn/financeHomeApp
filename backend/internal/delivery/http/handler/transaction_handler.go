@@ -40,6 +40,10 @@ func mapTransactionErr(c fiber.Ctx, err error) error {
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	case errors.Is(err, apperror.ErrBillPeriodPaidConflict):
 		return response.Error(c, fiber.StatusConflict, err.Error())
+	case errors.Is(err, apperror.ErrPersonalAccountForbidden):
+		return response.Error(c, fiber.StatusForbidden, err.Error())
+	case errors.Is(err, apperror.ErrForbidden):
+		return response.Error(c, fiber.StatusForbidden, "cuma pembuat transaksi yang boleh menghapusnya")
 	default:
 		return response.Error(c, fiber.StatusInternalServerError, "Gagal memproses transaksi")
 	}

@@ -13,6 +13,11 @@ type HouseholdRepository interface {
 	Create(ctx context.Context, household *entity.Household) error
 	FindByID(ctx context.Context, id uuid.UUID) (*entity.Household, error)
 	Update(ctx context.Context, household *entity.Household) error
+	// ListAllHouseholds full scan — dipakai job budget (auto-copy/alert-check) supaya tiap
+	// household diproses pakai budget_cycle_start_day miliknya sendiri. Aman di skala rumah
+	// tangga (lihat db.md §1.4 soal on-the-fly aggregation); butuh paging kalau household
+	// membludak jauh di luar skala v1.
+	ListAllHouseholds(ctx context.Context) ([]entity.Household, error)
 
 	CreateMember(ctx context.Context, member *entity.HouseholdMember) error
 	FindMemberByUserID(ctx context.Context, userID uuid.UUID) (*entity.HouseholdMember, error)

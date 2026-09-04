@@ -25,6 +25,7 @@ type Handlers struct {
 	Bill        *handler.BillHandler
 	Dashboard   *handler.DashboardHandler
 	Report      *handler.ReportHandler
+	BudgetPlan  *handler.BudgetPlanHandler
 }
 
 func RegisterRoutes(app *fiber.App, h *Handlers, jwtManager *jwt.Manager, isProduction bool, localStore *storage.LocalStore) {
@@ -100,6 +101,8 @@ func RegisterRoutes(app *fiber.App, h *Handlers, jwtManager *jwt.Manager, isProd
 	budgets.Get("/", h.Budget.ListBudgets)
 	budgets.Patch("/:id", h.Budget.UpdateBudget)
 	budgets.Delete("/:id", h.Budget.DeleteBudget)
+
+	protected.Get("/budget-plan", h.BudgetPlan.GetBudgetPlan)
 
 	goals := protected.Group("/goals")
 	goals.Post("/", h.Goal.CreateGoal)

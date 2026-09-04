@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { apiCall, ApiError } from '@/lib/api';
 import {
   Menu, X, Settings, LogOut, Loader2, Wallet, Target,
-  ArrowDownCircle, ArrowUpCircle, ArrowLeftRight,
+  ArrowDownCircle, ArrowUpCircle, ArrowLeftRight, ShieldCheck,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -27,6 +27,13 @@ interface DashboardAccount {
   id: string;
   name: string;
   current_balance: number;
+}
+
+interface FamilyMoneyCheck {
+  current_household_balance: number;
+  total_needed: number;
+  surplus: number;
+  is_sufficient: boolean;
 }
 
 interface BudgetSummary {
@@ -72,6 +79,7 @@ interface RecentTransaction {
 }
 
 interface DashboardData {
+  family_money_check: FamilyMoneyCheck;
   total_balance: number;
   accounts: DashboardAccount[];
   budget_summary: BudgetSummary;
@@ -288,6 +296,29 @@ export default function DashboardPage() {
 
         {dashboard && (
           <div className="flex flex-col gap-6 sm:gap-8">
+            <Card>
+              <div className="flex items-center gap-2 mb-4">
+                <ShieldCheck className="w-5 h-5 text-primary" />
+                <h3 className="text-lg sm:text-xl font-bold text-base-content">Uang Keluarga & Rencana Pengeluaran</h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-base-content/60 mb-1">Sisa Saldo Keluarga</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-base-content">
+                    {formatCurrency(dashboard.family_money_check.current_household_balance)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-base-content/60 mb-1">Sisa Rencana Pengeluaran</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-base-content">
+                    {formatCurrency(dashboard.family_money_check.total_needed)}
+                  </p>
+                  <p className="text-xs text-base-content/60 mt-0.5">Budget + tagihan periode aktif</p>
+                </div>
+              </div>
+            </Card>
+
             {/* 1. Total saldo + breakdown akun */}
             <Card>
               <div className="flex items-center gap-2 mb-4">
@@ -331,7 +362,7 @@ export default function DashboardPage() {
                             : 'text-success'
                       }`}
                     >
-                      {dashboard.budget_summary.percentage.toFixed(0)}%
+                      {dashboard.budget_summary.percentage.toFixed(0)}% terpakai
                     </p>
                   </div>
                   <div className="w-full h-2.5 rounded-full bg-base-300 overflow-hidden">
@@ -346,6 +377,10 @@ export default function DashboardPage() {
                       style={{ width: `${Math.min(100, dashboard.budget_summary.percentage)}%` }}
                     />
                   </div>
+                  <p className="text-xs text-base-content/60 mt-2">
+                    Sisa {formatCurrency(Math.max(0, dashboard.budget_summary.total_budget - dashboard.budget_summary.total_spent))}{' '}
+                    ({Math.max(0, 100 - dashboard.budget_summary.percentage).toFixed(0)}% budget belum terpakai)
+                  </p>
                 </>
               ) : (
                 <p className="text-sm text-base-content/60">Belum ada budget bulan ini</p>

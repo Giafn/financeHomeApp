@@ -134,6 +134,18 @@ func (r *BillPeriodRepository) ListOverdue(ctx context.Context, today time.Time)
 	return periods, err
 }
 
+func (r *BillPeriodRepository) ListUnpaidByHouseholdAndPeriod(ctx context.Context, householdID uuid.UUID, period string) ([]*repository.BillPeriodWithBill, error) {
+	var items []*repository.BillPeriodWithBill
+	err := dbOrTx(ctx, r.db).WithContext(ctx).
+		Table("bill_periods bp").
+		Select("bp.*, b.name AS bill_name, b.household_id AS household_id, b.category_id AS category_id, b.amount AS amount").
+		Joins("JOIN bills b ON b.id = bp.bill_id").
+		Where("b.household_id = ? AND bp.period = ? AND bp.status != 'paid' AND bp.deleted_at IS NULL", householdID, period).
+		Order("bp.due_date ASC").
+		Find(&items).Error
+	return items, err
+}
+
 func (r *BillPeriodRepository) ListUpcomingForHousehold(ctx context.Context, householdID uuid.UUID, days int) ([]*repository.BillPeriodWithBill, error) {
 	today := time.Now().Truncate(24 * time.Hour)
 	until := today.AddDate(0, 0, days)

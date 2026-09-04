@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"regexp"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"homeapp/internal/entity"
 	"homeapp/internal/pkg/apperror"
+	cycleperiod "homeapp/internal/pkg/period"
 	"homeapp/internal/repository"
 )
 
@@ -38,6 +40,13 @@ func (u *BudgetUsecase) validateCategory(ctx context.Context, householdID, categ
 	}
 	if category.Type != entity.CategoryExpense {
 		return apperror.ErrCategoryNotExpense
+	}
+	hasChildren, err := u.categoryRepo.HasChildren(ctx, categoryID, householdID)
+	if err != nil {
+		return err
+	}
+	if hasChildren {
+		return apperror.ErrCategoryHasChildren
 	}
 	return nil
 }
@@ -87,7 +96,12 @@ func (u *BudgetUsecase) ListBudgets(ctx context.Context, userID uuid.UUID, perio
 		return nil, err
 	}
 
-	items, err := u.budgetRepo.ListByPeriod(ctx, member.HouseholdID, period)
+	household, err := u.householdRepo.FindByID(ctx, member.HouseholdID)
+	if err != nil {
+		return nil, err
+	}
+
+	items, err := u.budgetRepo.ListByPeriod(ctx, member.HouseholdID, period, household.BudgetCycleStartDay)
 	if err != nil {
 		return nil, err
 	}
@@ -95,6 +109,21 @@ func (u *BudgetUsecase) ListBudgets(ctx context.Context, userID uuid.UUID, perio
 		items = []*repository.BudgetWithSpent{}
 	}
 	return items, nil
+}
+
+// GetCurrentPeriod resolve label periode "YYYY-MM" yang berlaku SEKARANG buat household user,
+// mengikuti budget_cycle_start_day-nya — dipakai dashboard supaya "periode sekarang" tidak
+// dihitung ulang secara naive (kalender murni) di banyak tempat.
+func (u *BudgetUsecase) GetCurrentPeriod(ctx context.Context, userID uuid.UUID) (string, error) {
+	member, err := u.householdRepo.FindMemberByUserID(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	household, err := u.householdRepo.FindByID(ctx, member.HouseholdID)
+	if err != nil {
+		return "", err
+	}
+	return cycleperiod.CurrentCyclePeriod(time.Now(), household.BudgetCycleStartDay), nil
 }
 
 func (u *BudgetUsecase) UpdateBudget(ctx context.Context, userID, budgetID uuid.UUID, amount float64) (*entity.Budget, error) {

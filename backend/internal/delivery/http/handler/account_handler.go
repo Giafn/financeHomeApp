@@ -5,6 +5,7 @@ import (
 
 	"homeapp/internal/delivery/http/dto"
 	"homeapp/internal/delivery/http/middleware"
+	"homeapp/internal/entity"
 	"homeapp/internal/pkg/apperror"
 	"homeapp/internal/pkg/response"
 	"homeapp/internal/usecase"
@@ -45,19 +46,20 @@ func (h *AccountHandler) Create(c fiber.Ctx) error {
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	}
 
-	account, err := h.accountUsecase.CreateAccount(c.Context(), userID, req.Name, req.Type, req.InitialBalance)
+	ownerType := ""
+	if req.OwnerType != nil {
+		ownerType = *req.OwnerType
+	}
+
+	account, err := h.accountUsecase.CreateAccount(c.Context(), userID, req.Name, req.Type, req.InitialBalance, ownerType)
 	if err != nil {
+		if errors.Is(err, apperror.ErrForbidden) {
+			return response.Error(c, fiber.StatusForbidden, "cuma owner rumah tangga yang boleh bikin akun bersama")
+		}
 		return response.Error(c, fiber.StatusInternalServerError, "gagal membuat akun")
 	}
 
-	return response.Success(c, fiber.StatusCreated, "akun berhasil dibuat", dto.AccountResponse{
-		ID:             account.ID.String(),
-		Name:           account.Name,
-		Type:           string(account.Type),
-		InitialBalance: account.InitialBalance,
-		CurrentBalance: account.InitialBalance,
-		IsActive:       account.IsActive,
-	})
+	return response.Success(c, fiber.StatusCreated, "akun berhasil dibuat", mapAccountToResponse(account, userID, account.InitialBalance))
 }
 
 // List godoc
@@ -109,14 +111,7 @@ func (h *AccountHandler) GetDetail(c fiber.Ctx) error {
 		return response.Error(c, fiber.StatusNotFound, "akun tidak ditemukan")
 	}
 
-	return response.Success(c, fiber.StatusOK, "ok", dto.AccountResponse{
-		ID:             account.ID.String(),
-		Name:           account.Name,
-		Type:           string(account.Type),
-		InitialBalance: account.InitialBalance,
-		CurrentBalance: account.InitialBalance,
-		IsActive:       account.IsActive,
-	})
+	return response.Success(c, fiber.StatusOK, "ok", mapAccountToResponse(account, userID, account.InitialBalance))
 }
 
 // Update godoc
@@ -160,13 +155,38 @@ func (h *AccountHandler) Update(c fiber.Ctx) error {
 	if req.IsActive != nil {
 		updates["is_active"] = *req.IsActive
 	}
+	if req.OwnerType != nil {
+		updates["owner_type"] = *req.OwnerType
+	}
 
 	if err := h.accountUsecase.UpdateAccount(c.Context(), userID, accountID, updates); err != nil {
-		if errors.Is(err, apperror.ErrForbidden) {
+		if errors.Is(err, apperror.ErrForbidden) || errors.Is(err, apperror.ErrPersonalAccountForbidden) {
 			return response.Error(c, fiber.StatusForbidden, err.Error())
 		}
 		return response.Error(c, fiber.StatusNotFound, "akun tidak ditemukan")
 	}
 
 	return response.Success(c, fiber.StatusOK, "akun berhasil diupdate", nil)
+}
+
+func mapAccountToResponse(account *entity.Account, userID uuid.UUID, currentBalance float64) dto.AccountResponse {
+	isOwnedByMe := account.OwnerType != entity.AccountOwnerPersonal || (account.OwnerUserID != nil && *account.OwnerUserID == userID)
+
+	var ownerUserID *string
+	if account.OwnerUserID != nil {
+		s := account.OwnerUserID.String()
+		ownerUserID = &s
+	}
+
+	return dto.AccountResponse{
+		ID:             account.ID.String(),
+		Name:           account.Name,
+		Type:           string(account.Type),
+		InitialBalance: account.InitialBalance,
+		CurrentBalance: currentBalance,
+		IsActive:       account.IsActive,
+		OwnerType:      string(account.OwnerType),
+		OwnerUserID:    ownerUserID,
+		IsOwnedByMe:    isOwnedByMe,
+	}
 }

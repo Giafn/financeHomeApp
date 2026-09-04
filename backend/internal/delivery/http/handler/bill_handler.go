@@ -33,10 +33,13 @@ func mapBillErr(c fiber.Ctx, err error) error {
 		errors.Is(err, apperror.ErrInvalidPeriodFormat),
 		errors.Is(err, apperror.ErrCategoryRequired),
 		errors.Is(err, apperror.ErrCategoryTypeMismatch),
+		errors.Is(err, apperror.ErrCategoryHasChildren),
 		errors.Is(err, apperror.ErrAccountInactive):
 		return response.Error(c, fiber.StatusBadRequest, err.Error())
 	case errors.Is(err, apperror.ErrBillPeriodAlreadyPaid):
 		return response.Error(c, fiber.StatusConflict, err.Error())
+	case errors.Is(err, apperror.ErrPersonalAccountForbidden):
+		return response.Error(c, fiber.StatusForbidden, err.Error())
 	default:
 		return response.Error(c, fiber.StatusInternalServerError, "Gagal memproses tagihan")
 	}

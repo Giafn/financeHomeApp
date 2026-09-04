@@ -237,4 +237,76 @@ var Migrations = []*gormigrate.Migration{
 			return tx.Exec(`DROP INDEX IF EXISTS idx_users_verification_token`).Error
 		},
 	},
+	{
+		ID: "20260901000001_add_category_parent_id",
+		Migrate: func(tx *gorm.DB) error {
+			// Sub-kategori (parent_id nullable, self-referencing) — kolom baru, default NULL,
+			// kategori existing tidak berubah perilaku sama sekali.
+			if err := tx.AutoMigrate(&entity.Category{}); err != nil {
+				return err
+			}
+			return tx.Exec(`
+				CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_categories_household_parent
+				ON categories(household_id, parent_id)
+			`).Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			if err := tx.Exec(`DROP INDEX IF EXISTS idx_categories_household_parent`).Error; err != nil {
+				return err
+			}
+			return tx.Exec(`ALTER TABLE categories DROP COLUMN IF EXISTS parent_id`).Error
+		},
+	},
+	{
+		ID: "20260901000002_add_account_owner_type",
+		Migrate: func(tx *gorm.DB) error {
+			// Akun personal vs rumah tangga. Default 'household' untuk semua baris existing —
+			// backfill eksplisit sebagai safety net kalau default GORM tidak kejalan saat ALTER,
+			// lalu CHECK constraint menegakkan owner_user_id konsisten dengan owner_type.
+			if err := tx.AutoMigrate(&entity.Account{}); err != nil {
+				return err
+			}
+			if err := tx.Exec(`UPDATE accounts SET owner_type = 'household' WHERE owner_type IS NULL OR owner_type = ''`).Error; err != nil {
+				return err
+			}
+			return tx.Exec(`
+				ALTER TABLE accounts
+				ADD CONSTRAINT chk_account_owner_consistency
+				CHECK (
+					(owner_type = 'personal' AND owner_user_id IS NOT NULL)
+					OR (owner_type = 'household' AND owner_user_id IS NULL)
+				)
+			`).Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			if err := tx.Exec(`ALTER TABLE accounts DROP CONSTRAINT IF EXISTS chk_account_owner_consistency`).Error; err != nil {
+				return err
+			}
+			if err := tx.Exec(`ALTER TABLE accounts DROP COLUMN IF EXISTS owner_user_id`).Error; err != nil {
+				return err
+			}
+			return tx.Exec(`ALTER TABLE accounts DROP COLUMN IF EXISTS owner_type`).Error
+		},
+	},
+	{
+		ID: "20260901000003_add_household_budget_cycle",
+		Migrate: func(tx *gorm.DB) error {
+			// Siklus budget custom (gajian tanggal 25, dll). Default 1 = kalender biasa,
+			// household existing tidak berubah perilaku sama sekali.
+			if err := tx.AutoMigrate(&entity.Household{}); err != nil {
+				return err
+			}
+			return tx.Exec(`
+				ALTER TABLE households
+				ADD CONSTRAINT chk_household_budget_cycle_start_day
+				CHECK (budget_cycle_start_day BETWEEN 1 AND 28)
+			`).Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			if err := tx.Exec(`ALTER TABLE households DROP CONSTRAINT IF EXISTS chk_household_budget_cycle_start_day`).Error; err != nil {
+				return err
+			}
+			return tx.Exec(`ALTER TABLE households DROP COLUMN IF EXISTS budget_cycle_start_day`).Error
+		},
+	},
 }

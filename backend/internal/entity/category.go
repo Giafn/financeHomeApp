@@ -18,7 +18,10 @@ type Category struct {
 	Icon        *string      `gorm:"type:varchar(50)" json:"icon,omitempty"`
 	Color       *string      `gorm:"type:varchar(20)" json:"color,omitempty"`
 	IsArchived  bool         `gorm:"not null;default:false" json:"is_archived"`
-	CreatedBy   uuid.UUID    `gorm:"type:uuid;not null" json:"created_by"`
+	// ParentID nullable — kategori dengan ParentID != nil adalah sub-kategori (maks 2 tingkat,
+	// ditegakkan di usecase). Budget/bill hanya boleh menunjuk kategori leaf (tanpa anak).
+	ParentID  *uuid.UUID `gorm:"type:uuid;index" json:"parent_id,omitempty"`
+	CreatedBy uuid.UUID  `gorm:"type:uuid;not null" json:"created_by"`
 }
 
 func (Category) TableName() string { return "categories" }

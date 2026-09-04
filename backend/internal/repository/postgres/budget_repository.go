@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"homeapp/internal/entity"
 	"homeapp/internal/pkg/apperror"
+	cycleperiod "homeapp/internal/pkg/period"
 	"homeapp/internal/repository"
 )
 
@@ -53,20 +53,10 @@ func (r *BudgetRepository) FindByCategoryPeriod(ctx context.Context, householdID
 	return &b, nil
 }
 
-// periodBounds mengembalikan [start, end) untuk period "YYYY-MM" — dipakai sebagai range
-// query yang sargable terhadap index (household_id, category_id, transaction_date).
-func periodBounds(period string) (time.Time, time.Time, error) {
-	start, err := time.Parse("2006-01", period)
+func (r *BudgetRepository) ListByPeriod(ctx context.Context, householdID uuid.UUID, period string, cycleStartDay int) ([]*repository.BudgetWithSpent, error) {
+	start, end, err := cycleperiod.CyclePeriodWindow(period, cycleStartDay)
 	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("format period tidak valid: %w", err)
-	}
-	return start, start.AddDate(0, 1, 0), nil
-}
-
-func (r *BudgetRepository) ListByPeriod(ctx context.Context, householdID uuid.UUID, period string) ([]*repository.BudgetWithSpent, error) {
-	start, end, err := periodBounds(period)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("format period tidak valid: %w", err)
 	}
 
 	var items []*repository.BudgetWithSpent
@@ -110,12 +100,3 @@ func (r *BudgetRepository) Delete(ctx context.Context, id, householdID uuid.UUID
 		Delete(&entity.Budget{}).Error
 }
 
-func (r *BudgetRepository) ListHouseholdIDsWithBudgetForPeriod(ctx context.Context, period string) ([]uuid.UUID, error) {
-	var ids []uuid.UUID
-	err := dbOrTx(ctx, r.db).WithContext(ctx).
-		Model(&entity.Budget{}).
-		Where("period = ? AND deleted_at IS NULL", period).
-		Distinct("household_id").
-		Pluck("household_id", &ids).Error
-	return ids, err
-}

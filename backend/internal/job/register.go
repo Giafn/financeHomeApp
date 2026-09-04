@@ -10,6 +10,7 @@ import (
 	"homeapp/internal/entity"
 	"homeapp/internal/pkg/mailer"
 	"homeapp/internal/pkg/notification"
+	cycleperiod "homeapp/internal/pkg/period"
 	"homeapp/internal/repository"
 	"homeapp/internal/usecase"
 )
@@ -76,23 +77,33 @@ func RegisterJobs(
 	// bulan lalu, copy baris yang BELUM ada di bulan ini (kategori yang sudah di-set manual
 	// bulan ini tidak ditimpa). Idempotent — cek "belum ada baris bulan ini" sebelum insert,
 	// aman dijalankan berkali-kali kalau worker restart di tengah loop.
+	//
+	// Loop SEMUA household (bukan cuma yang punya budget bulan lalu secara kalender) karena
+	// tiap household bisa punya budget_cycle_start_day beda — "periode sekarang"/"periode lalu"
+	// harus dihitung PER HOUSEHOLD, tidak bisa lagi 1 nilai global dihitung sekali di luar loop.
 	registry.Add("budget-auto-copy", func(ctx context.Context) (map[string]interface{}, error) {
-		now := time.Now()
-		currentPeriod := now.Format("2006-01")
-		previousPeriod := now.AddDate(0, -1, 0).Format("2006-01")
-
-		householdIDs, err := budgetRepo.ListHouseholdIDsWithBudgetForPeriod(ctx, previousPeriod)
+		households, err := householdRepo.ListAllHouseholds(ctx)
 		if err != nil {
 			return nil, err
 		}
 
+		now := time.Now()
 		copied := 0
-		for _, hhID := range householdIDs {
-			prevBudgets, err := budgetRepo.ListRawByPeriod(ctx, hhID, previousPeriod)
+		for _, hh := range households {
+			currentPeriod := cycleperiod.CurrentCyclePeriod(now, hh.BudgetCycleStartDay)
+			previousPeriod, err := cycleperiod.PreviousCyclePeriod(currentPeriod)
 			if err != nil {
 				return nil, err
 			}
-			currentBudgets, err := budgetRepo.ListRawByPeriod(ctx, hhID, currentPeriod)
+
+			prevBudgets, err := budgetRepo.ListRawByPeriod(ctx, hh.ID, previousPeriod)
+			if err != nil {
+				return nil, err
+			}
+			if len(prevBudgets) == 0 {
+				continue
+			}
+			currentBudgets, err := budgetRepo.ListRawByPeriod(ctx, hh.ID, currentPeriod)
 			if err != nil {
 				return nil, err
 			}
@@ -107,7 +118,7 @@ func RegisterJobs(
 					continue
 				}
 				newBudget := &entity.Budget{
-					HouseholdID: hhID,
+					HouseholdID: hh.ID,
 					CategoryID:  pb.CategoryID,
 					Period:      currentPeriod,
 					Amount:      pb.Amount,
@@ -120,8 +131,8 @@ func RegisterJobs(
 			}
 		}
 
-		log.Printf("budget-auto-copy: %d baris budget disalin ke periode %s", copied, currentPeriod)
-		return map[string]interface{}{"copied": copied, "period": currentPeriod}, nil
+		log.Printf("budget-auto-copy: %d baris budget disalin", copied)
+		return map[string]interface{}{"copied": copied}, nil
 	})
 
 	// budget-alert-check jalan harian: untuk tiap household+kategori yang spent-nya sudah
@@ -129,16 +140,17 @@ func RegisterJobs(
 	// (per user, bukan per job run) memastikan alert cuma terkirim sekali per kategori/bulan
 	// meski expense terus naik dan job jalan lagi besok.
 	registry.Add("budget-alert-check", func(ctx context.Context) (map[string]interface{}, error) {
-		period := time.Now().Format("2006-01")
-
-		householdIDs, err := budgetRepo.ListHouseholdIDsWithBudgetForPeriod(ctx, period)
+		households, err := householdRepo.ListAllHouseholds(ctx)
 		if err != nil {
 			return nil, err
 		}
 
+		now := time.Now()
 		alertsSent := 0
-		for _, hhID := range householdIDs {
-			budgets, err := budgetRepo.ListByPeriod(ctx, hhID, period)
+		for _, hh := range households {
+			period := cycleperiod.CurrentCyclePeriod(now, hh.BudgetCycleStartDay)
+
+			budgets, err := budgetRepo.ListByPeriod(ctx, hh.ID, period, hh.BudgetCycleStartDay)
 			if err != nil {
 				return nil, err
 			}
@@ -152,7 +164,7 @@ func RegisterJobs(
 					continue
 				}
 
-				members, err := householdRepo.FindMembersByHouseholdID(ctx, hhID)
+				members, err := householdRepo.FindMembersByHouseholdID(ctx, hh.ID)
 				if err != nil {
 					return nil, err
 				}
@@ -167,7 +179,7 @@ func RegisterJobs(
 					}
 
 					subject := fmt.Sprintf("Peringatan Budget: %s sudah %.0f%%", b.CategoryName, pct)
-					body := fmt.Sprintf("Budget kategori %s bulan %s sudah terpakai %.0f%% (Rp%.0f dari Rp%.0f).",
+					body := fmt.Sprintf("Budget kategori %s periode %s sudah terpakai %.0f%% (Rp%.0f dari Rp%.0f).",
 						b.CategoryName, period, pct, b.Spent, b.Amount)
 
 					if err := m.Send([]string{member.User.Email}, subject, body); err != nil {
@@ -175,7 +187,7 @@ func RegisterJobs(
 						continue
 					}
 
-					if err := guard.MarkSent(ctx, hhID, entity.NotificationBudgetAlert, b.CategoryID, period, member.UserID); err != nil {
+					if err := guard.MarkSent(ctx, hh.ID, entity.NotificationBudgetAlert, b.CategoryID, period, member.UserID); err != nil {
 						return nil, err
 					}
 					alertsSent++
@@ -183,8 +195,8 @@ func RegisterJobs(
 			}
 		}
 
-		log.Printf("budget-alert-check: %d alert terkirim untuk periode %s", alertsSent, period)
-		return map[string]interface{}{"alerts_sent": alertsSent, "period": period}, nil
+		log.Printf("budget-alert-check: %d alert terkirim", alertsSent)
+		return map[string]interface{}{"alerts_sent": alertsSent}, nil
 	})
 
 	// bill-period-generator jalan tanggal 1 tiap bulan: cuma untuk bill indefinite (tanpa

@@ -14,13 +14,14 @@ import (
 // yang sudah ada, dan menambah query agregasi baru hanya untuk bagian yang belum
 // punya usecase (upcoming bills 7 hari, tren bulanan, breakdown per anggota).
 type DashboardUsecase struct {
-	accountUsecase     *AccountUsecase
-	budgetUsecase      *BudgetUsecase
-	goalUsecase        *GoalUsecase
+	accountUsecase    *AccountUsecase
+	budgetUsecase     *BudgetUsecase
+	goalUsecase       *GoalUsecase
 	transactionUsecase *TransactionUsecase
-	householdRepo      repository.HouseholdRepository
-	transactionRepo    repository.TransactionRepository
-	billPeriodRepo     repository.BillPeriodRepository
+	budgetPlanUsecase *BudgetPlanUsecase
+	householdRepo     repository.HouseholdRepository
+	transactionRepo   repository.TransactionRepository
+	billPeriodRepo    repository.BillPeriodRepository
 }
 
 func NewDashboardUsecase(
@@ -28,6 +29,7 @@ func NewDashboardUsecase(
 	budgetUsecase *BudgetUsecase,
 	goalUsecase *GoalUsecase,
 	transactionUsecase *TransactionUsecase,
+	budgetPlanUsecase *BudgetPlanUsecase,
 	householdRepo repository.HouseholdRepository,
 	transactionRepo repository.TransactionRepository,
 	billPeriodRepo repository.BillPeriodRepository,
@@ -37,6 +39,7 @@ func NewDashboardUsecase(
 		budgetUsecase:      budgetUsecase,
 		goalUsecase:        goalUsecase,
 		transactionUsecase: transactionUsecase,
+		budgetPlanUsecase:  budgetPlanUsecase,
 		householdRepo:      householdRepo,
 		transactionRepo:    transactionRepo,
 		billPeriodRepo:     billPeriodRepo,
@@ -71,7 +74,19 @@ type DashboardGoal struct {
 	Percentage float64 `json:"percentage"`
 }
 
+// DashboardFamilyMoneyCheck jawaban langsung ke pertanyaan inti app: cukup gak uang bersama
+// (household, bukan personal) SEKARANG buat nutup sisa budget + tagihan belum lunas periode
+// berjalan. Dihitung sekali di BudgetPlanUsecase (source of truth), di sini cuma reuse hasilnya
+// — supaya angka di dashboard selalu identik dengan /budget-plan, tidak ada rumus kedua.
+type DashboardFamilyMoneyCheck struct {
+	CurrentHouseholdBalance float64 `json:"current_household_balance"`
+	TotalNeeded             float64 `json:"total_needed"`
+	Surplus                 float64 `json:"surplus"`
+	IsSufficient            bool    `json:"is_sufficient"`
+}
+
 type DashboardSummary struct {
+	FamilyMoneyCheck    DashboardFamilyMoneyCheck     `json:"family_money_check"`
 	TotalBalance        float64                        `json:"total_balance"`
 	Accounts            []DashboardAccountSummary       `json:"accounts"`
 	BudgetSummary       DashboardBudgetSummary          `json:"budget_summary"`
@@ -104,8 +119,12 @@ func (u *DashboardUsecase) GetSummary(ctx context.Context, userID uuid.UUID) (*D
 		totalBalance += balance
 	}
 
-	// 2. Budget bulan ini — reuse BudgetUsecase.ListBudgets (per kategori), jumlahkan jadi 1 agregat.
-	currentPeriod := time.Now().Format("2006-01")
+	// 2. Budget periode berjalan — reuse BudgetUsecase.ListBudgets (per kategori), jumlahkan
+	// jadi 1 agregat. GetCurrentPeriod menghormati budget_cycle_start_day household ini.
+	currentPeriod, err := u.budgetUsecase.GetCurrentPeriod(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
 	budgets, err := u.budgetUsecase.ListBudgets(ctx, userID, currentPeriod)
 	if err != nil {
 		return nil, err
@@ -117,6 +136,19 @@ func (u *DashboardUsecase) GetSummary(ctx context.Context, userID uuid.UUID) (*D
 	}
 	if budgetSummary.TotalBudget > 0 {
 		budgetSummary.Percentage = (budgetSummary.TotalSpent / budgetSummary.TotalBudget) * 100
+	}
+
+	// Hero section: cukup gak uang bersama sekarang — reuse BudgetPlanUsecase (source of truth),
+	// currentPeriod sama persis yang dipakai budget summary di atas, tidak resolve dua kali.
+	plan, err := u.budgetPlanUsecase.GetBudgetPlan(ctx, userID, currentPeriod)
+	if err != nil {
+		return nil, err
+	}
+	familyMoneyCheck := DashboardFamilyMoneyCheck{
+		CurrentHouseholdBalance: plan.CurrentHouseholdBalance,
+		TotalNeeded:             plan.TotalNeeded,
+		Surplus:                 plan.Surplus,
+		IsSufficient:            plan.IsSufficient,
 	}
 
 	// 3. Tagihan mendatang 7 hari — household-scoped, belum ada usecase khusus jadi query repo langsung.
@@ -166,6 +198,7 @@ func (u *DashboardUsecase) GetSummary(ctx context.Context, userID uuid.UUID) (*D
 	}
 
 	return &DashboardSummary{
+		FamilyMoneyCheck:   familyMoneyCheck,
 		TotalBalance:       totalBalance,
 		Accounts:           accounts,
 		BudgetSummary:      budgetSummary,

@@ -27,11 +27,18 @@ func NewAccountUsecase(householdRepo repository.HouseholdRepository, accountRepo
 	return &AccountUsecase{householdRepo: householdRepo, accountRepo: accountRepo}
 }
 
-// CreateAccount membuat akun baru. household_id diambil dari context (user's household).
-func (u *AccountUsecase) CreateAccount(ctx context.Context, userID uuid.UUID, name string, accountType string, initialBalance float64) (*entity.Account, error) {
+func (u *AccountUsecase) CreateAccount(ctx context.Context, userID uuid.UUID, name string, accountType string, initialBalance float64, ownerType string) (*entity.Account, error) {
 	member, err := u.householdRepo.FindMemberByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
+	}
+
+	if ownerType == "" {
+		ownerType = string(entity.AccountOwnerHousehold)
+	}
+
+	if entity.AccountOwnerType(ownerType) == entity.AccountOwnerHousehold && member.Role != entity.RoleOwner {
+		return nil, apperror.ErrForbidden
 	}
 
 	account := &entity.Account{
@@ -40,7 +47,11 @@ func (u *AccountUsecase) CreateAccount(ctx context.Context, userID uuid.UUID, na
 		Type:           entity.AccountType(accountType),
 		InitialBalance: initialBalance,
 		IsActive:       true,
+		OwnerType:      entity.AccountOwnerType(ownerType),
 		CreatedBy:      userID,
+	}
+	if account.OwnerType == entity.AccountOwnerPersonal {
+		account.OwnerUserID = &userID
 	}
 
 	if err := u.accountRepo.Create(ctx, account); err != nil {
@@ -86,13 +97,18 @@ func (u *AccountUsecase) ListAccounts(ctx context.Context, userID uuid.UUID, inc
 		// Hitung current_balance (sementara = initial_balance)
 		balance, _ := u.accountRepo.CalculateBalance(ctx, acc.ID)
 
+		isOwnedByMe := acc.OwnerType != entity.AccountOwnerPersonal || (acc.OwnerUserID != nil && *acc.OwnerUserID == userID)
+
 		result = append(result, map[string]interface{}{
-			"id":               acc.ID,
-			"name":             acc.Name,
-			"type":             acc.Type,
-			"initial_balance":  acc.InitialBalance,
-			"current_balance":  balance,
-			"is_active":        acc.IsActive,
+			"id":              acc.ID,
+			"name":            acc.Name,
+			"type":            acc.Type,
+			"initial_balance": acc.InitialBalance,
+			"current_balance": balance,
+			"is_active":       acc.IsActive,
+			"owner_type":      acc.OwnerType,
+			"owner_user_id":   acc.OwnerUserID,
+			"is_owned_by_me":  isOwnedByMe,
 		})
 	}
 
@@ -115,6 +131,14 @@ func (u *AccountUsecase) UpdateAccount(ctx context.Context, userID uuid.UUID, ac
 		return apperror.ErrForbidden
 	}
 
+	if account.OwnerType == entity.AccountOwnerPersonal {
+		if account.OwnerUserID == nil || *account.OwnerUserID != userID {
+			return apperror.ErrPersonalAccountForbidden
+		}
+	} else if member.Role != entity.RoleOwner {
+		return apperror.ErrForbidden
+	}
+
 	// Update hanya field yang diizinkan
 	if name, ok := updates["name"].(string); ok && name != "" {
 		account.Name = name
@@ -124,6 +148,14 @@ func (u *AccountUsecase) UpdateAccount(ctx context.Context, userID uuid.UUID, ac
 	}
 	if isActive, ok := updates["is_active"].(bool); ok {
 		account.IsActive = isActive
+	}
+	if ownerType, ok := updates["owner_type"].(string); ok && ownerType != "" {
+		account.OwnerType = entity.AccountOwnerType(ownerType)
+		if account.OwnerType == entity.AccountOwnerPersonal {
+			account.OwnerUserID = &userID
+		} else {
+			account.OwnerUserID = nil
+		}
 	}
 
 	return u.accountRepo.Update(ctx, account)

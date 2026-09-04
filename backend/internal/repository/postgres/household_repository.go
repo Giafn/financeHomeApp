@@ -36,6 +36,12 @@ func (r *householdRepository) FindByID(ctx context.Context, id uuid.UUID) (*enti
 	return &h, nil
 }
 
+func (r *householdRepository) ListAllHouseholds(ctx context.Context) ([]entity.Household, error) {
+	var households []entity.Household
+	err := r.db.WithContext(ctx).Find(&households).Error
+	return households, err
+}
+
 func (r *householdRepository) CreateMember(ctx context.Context, member *entity.HouseholdMember) error {
 	return dbOrTx(ctx, r.db).WithContext(ctx).Create(member).Error
 }
