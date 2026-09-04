@@ -34,15 +34,19 @@ export function BottomNav({ active }: BottomNavProps) {
   const [hubOpen, setHubOpen] = useState(false);
   const hubActive = isHubRoute(active);
 
+  const showFloatingAdd = active === '/transactions' || active === '/dashboard';
+
   return (
     <>
-      <Link
-        href="/transactions/new"
-        className="lg:hidden fixed bottom-20 right-4 z-50 inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary text-primary-content shadow-lg active:scale-95 transition-transform"
-        aria-label="Tambah transaksi"
-      >
-        <Plus className="w-6 h-6" />
-      </Link>
+      {showFloatingAdd && (
+        <Link
+          href="/transactions/new"
+          className="lg:hidden fixed bottom-20 right-4 z-50 inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary text-primary-content shadow-lg active:scale-95 transition-transform"
+          aria-label="Tambah transaksi"
+        >
+          <Plus className="w-6 h-6" />
+        </Link>
+      )}
 
       {/* Hub sheet — Kategori/Goals/Tagihan/Rumah Tangga/Profil, only on mobile */}
       {hubOpen && (
