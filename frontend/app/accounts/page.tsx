@@ -219,8 +219,8 @@ export default function AccountsPage() {
     <AppShell active="/accounts">
       {/* Topbar */}
       <div className="border-b border-base-300 bg-base-200 sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <h1 className="text-2xl sm:text-3xl font-bold text-base-content">Akun</h1>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+          <h1 className="text-xl sm:text-2xl font-bold text-base-content">Akun</h1>
           <Button onClick={() => setShowModal(true)}>
             <Plus className="w-4 h-4" />
             Tambah
@@ -242,20 +242,25 @@ export default function AccountsPage() {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
             {accounts.map((account) => (
-              <Card key={account.id} className={!account.is_active ? 'opacity-50' : ''}>
-                <div className="flex items-start justify-between gap-2 mb-4">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="p-2 bg-base-100 rounded-full text-primary shrink-0">
+              <Card
+                key={account.id}
+                className={`!p-4 sm:!p-5 ${!account.is_active ? 'opacity-50' : ''}`}
+              >
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                    <div className="p-1.5 bg-base-100 rounded-full text-primary shrink-0">
                       {getTypeIcon(account.type)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-base-content truncate">{account.name}</h3>
+                      <h3 className="font-semibold text-base-content truncate text-sm">
+                        {account.name}
+                      </h3>
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-xs text-base-content/60 capitalize">{account.type}</p>
+                        <p className="text-[11px] text-base-content/60 capitalize">{account.type}</p>
                         {account.owner_type === 'personal' && (
-                          <span className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded-full">
+                          <span className="text-[11px] px-1.5 py-0.5 bg-primary/10 text-primary rounded-full">
                             {account.is_owned_by_me ? 'Pribadi' : 'Pribadi (Anggota Lain)'}
                           </span>
                         )}
@@ -263,16 +268,16 @@ export default function AccountsPage() {
                     </div>
                   </div>
                   {!account.is_active && (
-                    <span className="text-xs px-2 py-1 bg-base-300 text-base-content/60 rounded-full whitespace-nowrap shrink-0">
+                    <span className="text-[11px] px-2 py-1 bg-base-300 text-base-content/60 rounded-full whitespace-nowrap shrink-0">
                       Nonaktif
                     </span>
                   )}
                 </div>
 
-                <div className="mb-6">
-                  <p className="text-xs text-base-content/60 mb-1">Saldo</p>
+                <div className="mb-4">
+                  <p className="text-[11px] text-base-content/60 mb-0.5">Saldo</p>
                   <p
-                    className={`text-2xl font-bold ${
+                    className={`text-xl sm:text-2xl font-bold ${
                       account.current_balance < 0 ? 'text-error' : 'text-base-content'
                     }`}
                   >
@@ -280,10 +285,11 @@ export default function AccountsPage() {
                   </p>
                 </div>
 
-                <div className="pt-4 border-t border-base-300 flex gap-2">
+                <div className="pt-3 border-t border-base-300 flex gap-2">
                   {account.is_owned_by_me && (
                     <Button
                       variant="ghost"
+                      size="sm"
                       fullWidth
                       onClick={() => openEditModal(account)}
                       disabled={updating}
@@ -293,6 +299,7 @@ export default function AccountsPage() {
                   )}
                   <Button
                     variant="ghost"
+                    size="sm"
                     fullWidth
                     onClick={() => handleToggleActive(account.id, account.is_active)}
                     disabled={updating || togglingId === account.id}
