@@ -10,6 +10,14 @@ type UpdateBudgetRequest struct {
 	Amount float64 `json:"amount" validate:"required,gt=0"`
 }
 
+type CopyBudgetRequest struct {
+	Period string `json:"period" validate:"required,len=7"`
+}
+
+type CopyBudgetResponse struct {
+	Copied int `json:"copied"`
+}
+
 type BudgetResponse struct {
 	ID           string  `json:"id"`
 	CategoryID   string  `json:"category_id"`

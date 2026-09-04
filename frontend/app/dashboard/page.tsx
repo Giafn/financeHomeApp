@@ -239,7 +239,7 @@ export default function DashboardPage() {
       <div className="border-b border-base-300 sticky top-0 z-50 bg-base-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex-1">
-            <h1 className="text-xl sm:text-2xl font-bold text-base-content">Family Finance</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-base-content">Shared Finance</h1>
             {profile?.household && (
               <p className="text-xs sm:text-sm text-base-content/60 mt-0.5">{profile.household.name}</p>
             )}
@@ -299,12 +299,12 @@ export default function DashboardPage() {
             <Card>
               <div className="flex items-center gap-2 mb-4">
                 <ShieldCheck className="w-5 h-5 text-primary" />
-                <h3 className="text-lg sm:text-xl font-bold text-base-content">Uang Keluarga & Rencana Pengeluaran</h3>
+                <h3 className="text-lg sm:text-xl font-bold text-base-content">Uang Bersama & Rencana Pengeluaran</h3>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-base-content/60 mb-1">Sisa Saldo Keluarga</p>
+                  <p className="text-xs text-base-content/60 mb-1">Sisa Saldo Bersama</p>
                   <p className="text-2xl sm:text-3xl font-bold text-base-content">
                     {formatCurrency(dashboard.family_money_check.current_household_balance)}
                   </p>

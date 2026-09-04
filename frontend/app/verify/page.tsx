@@ -57,7 +57,7 @@ function VerifyContent() {
             </div>
             <h1 className="text-3xl font-bold mb-3 text-base-content">Email berhasil diverifikasi!</h1>
             <p className="text-sm sm:text-base text-base-content/60 mb-8">
-              Akun kamu sudah aktif. Sekarang kamu bisa masuk ke Family Finance.
+              Akun kamu sudah aktif. Sekarang kamu bisa masuk ke Shared Finance.
             </p>
             <Card className="p-4">
               <Link href="/login">

@@ -7,6 +7,7 @@ import (
 	"homeapp/internal/delivery/http/middleware"
 	"homeapp/internal/pkg/apperror"
 	"homeapp/internal/pkg/response"
+	"homeapp/internal/pkg/storage"
 	"homeapp/internal/usecase"
 
 	"github.com/go-playground/validator/v10"
@@ -17,10 +18,42 @@ import (
 type UserHandler struct {
 	userUsecase *usecase.UserUsecase
 	validate    *validator.Validate
+	store       storage.Storage
 }
 
-func NewUserHandler(userUsecase *usecase.UserUsecase) *UserHandler {
-	return &UserHandler{userUsecase: userUsecase, validate: validator.New()}
+func NewUserHandler(userUsecase *usecase.UserUsecase, store storage.Storage) *UserHandler {
+	return &UserHandler{userUsecase: userUsecase, validate: validator.New(), store: store}
+}
+
+// resolveAvatar mengubah avatar_url ter-stored menjadi URL yang bisa diakses client
+// (presigned GET untuk S3; untuk local store dibiarkan apa adanya).
+func (h *UserHandler) resolveAvatar(c fiber.Ctx, url *string) *string {
+	if url == nil || *url == "" || h.store == nil {
+		return url
+	}
+	resolved, err := h.store.ReadURL(c.Context(), *url)
+	if err != nil {
+		return url
+	}
+	return &resolved
+}
+
+func (h *UserHandler) toResponse(c fiber.Ctx, profile *usecase.UserProfile) dto.UserProfileResponse {
+	var household *dto.UserHousehold
+	if profile.Household != nil {
+		household = &dto.UserHousehold{
+			ID:   profile.Household.ID.String(),
+			Name: profile.Household.Name,
+			Role: profile.Household.Role,
+		}
+	}
+	return dto.UserProfileResponse{
+		ID:        profile.ID.String(),
+		Name:      profile.Name,
+		Email:     profile.Email,
+		AvatarURL: h.resolveAvatar(c, profile.AvatarURL),
+		Household: household,
+	}
 }
 
 // GetProfile godoc
@@ -41,22 +74,7 @@ func (h *UserHandler) GetProfile(c fiber.Ctx) error {
 		return response.Error(c, fiber.StatusInternalServerError, "gagal mengambil profil")
 	}
 
-	return response.Success(c, fiber.StatusOK, "", dto.UserProfileResponse{
-		ID:        profile.ID.String(),
-		Name:      profile.Name,
-		Email:     profile.Email,
-		AvatarURL: profile.AvatarURL,
-		Household: func() *dto.UserHousehold {
-			if profile.Household == nil {
-				return nil
-			}
-			return &dto.UserHousehold{
-				ID:   profile.Household.ID.String(),
-				Name: profile.Household.Name,
-				Role: profile.Household.Role,
-			}
-		}(),
-	})
+	return response.Success(c, fiber.StatusOK, "", h.toResponse(c, profile))
 }
 
 // UpdateProfile godoc
@@ -90,22 +108,7 @@ func (h *UserHandler) UpdateProfile(c fiber.Ctx) error {
 		return response.Error(c, fiber.StatusInternalServerError, "gagal update profil")
 	}
 
-	return response.Success(c, fiber.StatusOK, "profil berhasil diupdate", dto.UserProfileResponse{
-		ID:        profile.ID.String(),
-		Name:      profile.Name,
-		Email:     profile.Email,
-		AvatarURL: profile.AvatarURL,
-		Household: func() *dto.UserHousehold {
-			if profile.Household == nil {
-				return nil
-			}
-			return &dto.UserHousehold{
-				ID:   profile.Household.ID.String(),
-				Name: profile.Household.Name,
-				Role: profile.Household.Role,
-			}
-		}(),
-	})
+	return response.Success(c, fiber.StatusOK, "profil berhasil diupdate", h.toResponse(c, profile))
 }
 
 // ChangePassword godoc

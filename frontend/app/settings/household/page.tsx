@@ -66,7 +66,7 @@ export default function HouseholdSettingsPage() {
         if (err instanceof ApiError && err.statusCode === 401) {
           router.push('/login');
         } else {
-          setError('Gagal memuat data rumah tangga');
+          setError('Gagal memuat data anggota');
         }
       } finally {
         setLoading(false);
@@ -79,7 +79,7 @@ export default function HouseholdSettingsPage() {
   const handleUpdateName = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!household || !newName.trim()) {
-      setError('Nama rumah tangga tidak boleh kosong');
+      setError('Nama anggota tidak boleh kosong');
       return;
     }
 
@@ -93,14 +93,14 @@ export default function HouseholdSettingsPage() {
         body: JSON.stringify({ name: newName }),
       });
 
-      setSuccess('Nama rumah tangga berhasil diupdate');
+      setSuccess('Nama anggota berhasil diupdate');
       setHousehold({ ...household, name: newName });
       setEditingName(false);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError('Gagal update nama rumah tangga');
+        setError('Gagal update nama anggota');
       }
     } finally {
       setUpdating(false);
@@ -174,7 +174,7 @@ export default function HouseholdSettingsPage() {
       <div className="min-h-screen flex items-center justify-center bg-base-100">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <p className="text-base-content/60">Memuat rumah tangga...</p>
+          <p className="text-base-content/60">Memuat anggota...</p>
         </div>
       </div>
     );
@@ -183,14 +183,14 @@ export default function HouseholdSettingsPage() {
   if (!household) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-base-100">
-        <Alert type="error" message="Gagal memuat rumah tangga" />
+        <Alert type="error" message="Gagal memuat anggota" />
       </div>
     );
   }
 
   return (
     <AppShell active="/settings/household">
-      <TopBar title="Rumah Tangga" subtitle="Kelola anggota & undangan" backHref="/settings/profile" />
+      <TopBar title="Anggota" subtitle="Kelola anggota & undangan" backHref="/settings/profile" />
 
       <div className="max-w-4xl mx-auto p-4 sm:p-6">
         {error && <Alert type="error" message={error} />}
@@ -199,11 +199,11 @@ export default function HouseholdSettingsPage() {
         <div className="flex flex-col gap-6 sm:gap-8">
           {/* Household Details */}
           <Card>
-            <h2 className="text-xl sm:text-2xl font-bold mb-6 text-base-content">Detail Rumah Tangga</h2>
+            <h2 className="text-xl sm:text-2xl font-bold mb-6 text-base-content">Detail Anggota</h2>
 
             {editingName ? (
               <form onSubmit={handleUpdateName} className="flex flex-col gap-4">
-                <FormField label="Nama Rumah Tangga">
+                <FormField label="Nama Anggota">
                   <Input
                     type="text"
                     required
@@ -241,7 +241,7 @@ export default function HouseholdSettingsPage() {
             ) : (
               <div className="flex flex-col gap-4">
                 <div className="p-4 bg-base-100 rounded-2xl border border-base-300">
-                  <p className="text-xs sm:text-sm text-base-content/60 mb-1">Nama Rumah Tangga</p>
+                  <p className="text-xs sm:text-sm text-base-content/60 mb-1">Nama Anggota</p>
                   <p className="font-medium text-base sm:text-lg text-base-content">{household.name}</p>
                 </div>
                 <div className="p-4 bg-base-100 rounded-2xl border border-base-300">
@@ -319,7 +319,7 @@ export default function HouseholdSettingsPage() {
 
           {/* Members */}
           <Card>
-            <h2 className="text-xl sm:text-2xl font-bold mb-6 text-base-content">Anggota Rumah Tangga</h2>
+            <h2 className="text-xl sm:text-2xl font-bold mb-6 text-base-content">Daftar Anggota</h2>
 
             <div className="flex flex-col gap-3">
               {members.map((member) => (

@@ -90,7 +90,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="mb-6 sm:mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold mb-2 text-base-content">Welcome back</h1>
-          <p className="text-sm sm:text-base text-base-content/60">Kelola keuangan keluarga Anda dengan mudah</p>
+          <p className="text-sm sm:text-base text-base-content/60">Kelola keuangan bersama Anda dengan mudah</p>
         </div>
 
         <Card>

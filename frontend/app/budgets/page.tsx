@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiCall, ApiError } from '@/lib/api';
-import { Loader2, ChevronLeft, ChevronRight, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Plus, Pencil, Trash2, Copy } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
@@ -70,6 +70,7 @@ export default function BudgetsPage() {
   const [period, setPeriod] = useState(currentPeriod());
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [prevHasBudgets, setPrevHasBudgets] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
@@ -77,17 +78,20 @@ export default function BudgetsPage() {
   const [formAmount, setFormAmount] = useState('');
 
   const isPastPeriod = period < currentPeriod();
+  const prevPeriod = shiftPeriod(period, -1);
 
   const fetchBudgets = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const [budgetsRes, categoriesRes] = await Promise.all([
+      const [budgetsRes, categoriesRes, prevRes] = await Promise.all([
         apiCall<Budget[]>(`/budgets?period=${period}`),
         apiCall<Category[]>('/categories?type=expense&include_archived=false'),
+        apiCall<Budget[]>(`/budgets?period=${prevPeriod}`),
       ]);
       setBudgets(budgetsRes || []);
       setCategories(categoriesRes || []);
+      setPrevHasBudgets((prevRes || []).length > 0);
     } catch (err) {
       if (err instanceof ApiError && err.statusCode === 401) {
         router.push('/login');
@@ -97,7 +101,7 @@ export default function BudgetsPage() {
     } finally {
       setLoading(false);
     }
-  }, [period, router]);
+  }, [period, prevPeriod, router]);
 
   useEffect(() => {
     fetchBudgets();
@@ -185,6 +189,35 @@ export default function BudgetsPage() {
     }
   };
 
+  const handleCopyPrevious = async () => {
+    if (!window.confirm(`Salin budget dari ${periodLabel(prevPeriod)} ke ${periodLabel(period)}?`)) return;
+
+    setError('');
+    setSuccess('');
+    setUpdating(true);
+
+    try {
+      const res = await apiCall<{ copied: number }>('/budgets/copy-from-previous', {
+        method: 'POST',
+        body: JSON.stringify({ period }),
+      });
+      if (res.copied > 0) {
+        setSuccess(`${res.copied} budget disalin dari bulan sebelumnya`);
+      } else {
+        setSuccess('Tidak ada budget baru untuk disalin (semua kategori sudah ada)');
+      }
+      fetchBudgets();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Gagal menyalin budget');
+      }
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   return (
     <AppShell active="/budgets">
       <div className="border-b border-base-300 bg-base-200 sticky top-0 z-50">
@@ -234,10 +267,20 @@ export default function BudgetsPage() {
           <div className="text-center py-16">
             <p className="text-base-content/60 mb-4">Belum ada budget untuk bulan ini</p>
             {!isPastPeriod && (
-              <Button onClick={openCreateModal} disabled={availableCategories.length === 0}>
-                <Plus className="w-4 h-4" />
-                Buat Budget Pertama
-              </Button>
+              <>
+                <Button onClick={openCreateModal} disabled={availableCategories.length === 0}>
+                  <Plus className="w-4 h-4" />
+                  Buat Budget Pertama
+                </Button>
+                {prevHasBudgets && (
+                  <div className="mt-4">
+                    <Button variant="outline" onClick={handleCopyPrevious} disabled={updating}>
+                      <Copy className="w-4 h-4" />
+                      Salin budget bulan sebelumnya
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         ) : (

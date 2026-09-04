@@ -114,7 +114,7 @@ func main() {
 
 	handlers := &httpDelivery.Handlers{
 		Auth:        handler.NewAuthHandler(authUsecase),
-		User:        handler.NewUserHandler(userUsecase),
+		User:        handler.NewUserHandler(userUsecase, fileStore),
 		Household:   handler.NewHouseholdHandler(householdUsecase),
 		Account:     handler.NewAccountHandler(accountUsecase),
 		Category:    handler.NewCategoryHandler(categoryUsecase, householdRepo, validate),

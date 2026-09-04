@@ -16,7 +16,7 @@ const HUB_ITEMS = [
   { href: '/goals', label: 'Goals', icon: Target },
   { href: '/bills', label: 'Tagihan', icon: Receipt },
   { href: '/reports', label: 'Laporan', icon: BarChart3 },
-  { href: '/settings/household', label: 'Rumah Tangga', icon: Users },
+  { href: '/settings/household', label: 'Anggota', icon: Users },
   { href: '/settings/profile', label: 'Profil Saya', icon: Settings },
 ] as const;
 
@@ -35,8 +35,8 @@ export function Sidebar({ active }: SidebarProps) {
   return (
     <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-64 flex-col border-r border-base-300 bg-base-200">
       <div className="px-5 py-5 border-b border-base-300">
-        <h1 className="text-lg font-bold text-base-content">Family Finance</h1>
-        <p className="text-xs text-base-content/60 mt-0.5">Kelola keuangan keluarga</p>
+        <h1 className="text-lg font-bold text-base-content">Shared Finance</h1>
+        <p className="text-xs text-base-content/60 mt-0.5">Kelola keuangan bersama</p>
       </div>
 
       <nav className="flex-1 overflow-y-auto p-3 flex flex-col gap-1">

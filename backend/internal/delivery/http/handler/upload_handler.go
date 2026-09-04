@@ -2,6 +2,7 @@ package handler
 
 import (
 	"log"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
@@ -9,6 +10,9 @@ import (
 	"homeapp/internal/pkg/response"
 	"homeapp/internal/pkg/storage"
 )
+
+// MaxUploadSizeBytes batas maksimum berkas yang boleh diunggah (5 MB).
+const MaxUploadSizeBytes = 5 * 1024 * 1024
 
 type UploadHandler struct {
 	store      storage.Storage
@@ -44,6 +48,11 @@ func (h *UploadHandler) PresignUpload(c fiber.Ctx) error {
 	}
 	if err := h.validator.Struct(req); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "Validasi gagal: "+err.Error())
+	}
+
+	// Hanya gambar yang boleh diunggah (avatar & lampiran ditampilkan via <img>).
+	if !strings.HasPrefix(strings.ToLower(req.ContentType), "image/") {
+		return response.Error(c, fiber.StatusBadRequest, "Hanya file gambar yang diperbolehkan")
 	}
 
 	uploadURL, fileURL, err := h.store.UploadURL(c.Context(), req.Filename, req.ContentType)

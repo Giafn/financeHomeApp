@@ -99,6 +99,7 @@ func RegisterRoutes(app *fiber.App, h *Handlers, jwtManager *jwt.Manager, isProd
 	budgets := protected.Group("/budgets")
 	budgets.Post("/", h.Budget.CreateBudget)
 	budgets.Get("/", h.Budget.ListBudgets)
+	budgets.Post("/copy-from-previous", h.Budget.CopyFromPrevious)
 	budgets.Patch("/:id", h.Budget.UpdateBudget)
 	budgets.Delete("/:id", h.Budget.DeleteBudget)
 

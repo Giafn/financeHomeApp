@@ -45,8 +45,8 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Family Finance",
-  description: "Multi-tenant family finance tracking app",
+  title: "Shared Finance",
+  description: "Multi-tenant shared finance tracking app",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

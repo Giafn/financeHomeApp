@@ -16,7 +16,7 @@ const HUB_ITEMS = [
   { href: '/goals', label: 'Goals', icon: Target },
   { href: '/bills', label: 'Tagihan', icon: Receipt },
   { href: '/reports', label: 'Laporan', icon: BarChart3 },
-  { href: '/settings/household', label: 'Rumah Tangga', icon: Users },
+  { href: '/settings/household', label: 'Anggota', icon: Users },
   { href: '/settings/profile', label: 'Profil Saya', icon: Settings },
 ] as const;
 
@@ -48,7 +48,7 @@ export function BottomNav({ active }: BottomNavProps) {
         </Link>
       )}
 
-      {/* Hub sheet — Kategori/Goals/Tagihan/Rumah Tangga/Profil, only on mobile */}
+      {/* Hub sheet — Kategori/Goals/Tagihan/Anggota/Profil, only on mobile */}
       {hubOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={() => setHubOpen(false)}>
           <div className="absolute inset-0 bg-black/60" />

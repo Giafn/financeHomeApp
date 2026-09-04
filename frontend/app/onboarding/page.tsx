@@ -33,12 +33,12 @@ export default function OnboardingPage() {
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.statusCode === 409) {
-          setError('Anda sudah tergabung dalam rumah tangga lain');
+          setError('Anda sudah tergabung dalam anggota lain');
         } else {
           setError(err.message);
         }
       } else {
-        setError('Gagal membuat rumah tangga');
+        setError('Gagal membuat anggota');
       }
     } finally {
       setLoading(false);
@@ -62,12 +62,12 @@ export default function OnboardingPage() {
         if (err.statusCode === 400) {
           setError('Kode undangan tidak valid atau sudah kadaluarsa');
         } else if (err.statusCode === 409) {
-          setError('Anda sudah tergabung dalam rumah tangga lain');
+          setError('Anda sudah tergabung dalam anggota lain');
         } else {
           setError(err.message);
         }
       } else {
-        setError('Gagal bergabung ke rumah tangga');
+        setError('Gagal bergabung ke anggota');
       }
     } finally {
       setLoading(false);
@@ -78,8 +78,8 @@ export default function OnboardingPage() {
     <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-base-100">
       <div className="w-full max-w-md">
         <div className="mb-6 sm:mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold mb-2 text-base-content">Siapkan rumah tangga</h1>
-          <p className="text-sm sm:text-base text-base-content/60">Buat atau bergabung dengan rumah tangga untuk mulai</p>
+          <h1 className="text-3xl sm:text-4xl font-bold mb-2 text-base-content">Siapkan anggota</h1>
+          <p className="text-sm sm:text-base text-base-content/60">Buat atau bergabung dengan anggota untuk mulai</p>
         </div>
 
         <Card>
@@ -94,7 +94,7 @@ export default function OnboardingPage() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-base-content mb-1 text-sm sm:text-base">Buat Rumah Tangga Baru</h3>
+                    <h3 className="font-semibold text-base-content mb-1 text-sm sm:text-base">Buat Anggota</h3>
                     <p className="text-xs sm:text-sm text-base-content/60">Anda akan menjadi pemilik</p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
@@ -108,7 +108,7 @@ export default function OnboardingPage() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-base-content mb-1 text-sm sm:text-base">Bergabung dengan Rumah Tangga</h3>
+                    <h3 className="font-semibold text-base-content mb-1 text-sm sm:text-base">Bergabung dengan Anggota</h3>
                     <p className="text-xs sm:text-sm text-base-content/60">Gunakan kode undangan</p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
@@ -119,10 +119,10 @@ export default function OnboardingPage() {
 
           {step === 'create' && (
             <form onSubmit={handleCreateHousehold} className="flex flex-col gap-5 sm:gap-6">
-              <FormField label="Nama Rumah Tangga">
+              <FormField label="Nama Anggota">
                 <Input
                   type="text"
-                  placeholder="Keluarga Budi"
+                  placeholder="Kost Bareng / Anggota"
                   required
                   minLength={2}
                   value={householdName}
@@ -158,7 +158,7 @@ export default function OnboardingPage() {
 
           {step === 'join' && (
             <form onSubmit={handleJoinHousehold} className="flex flex-col gap-5 sm:gap-6">
-              <FormField label="Kode Undangan" hint="Minta kode ini dari pemilik rumah tangga">
+              <FormField label="Kode Undangan" hint="Minta kode ini dari pemilik anggota">
                 <Input
                   type="text"
                   placeholder="AB12CD34"

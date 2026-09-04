@@ -101,7 +101,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-md">
         <div className="mb-6 sm:mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold mb-2 text-base-content">Mulai sekarang</h1>
-          <p className="text-sm sm:text-base text-base-content/60">Buat akun untuk kelola keuangan keluarga</p>
+          <p className="text-sm sm:text-base text-base-content/60">Buat akun untuk kelola keuangan bersama</p>
         </div>
 
         <Card>

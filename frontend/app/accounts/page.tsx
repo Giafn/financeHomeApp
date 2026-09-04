@@ -368,7 +368,7 @@ export default function AccountsPage() {
                   }
                   disabled={updating}
                 >
-                  <option value="household">Milik Bersama (Keluarga)</option>
+                  <option value="household">Milik Bersama</option>
                   <option value="personal">Milik Pribadi (cuma saya)</option>
                 </Select>
               </FormField>
@@ -433,7 +433,7 @@ export default function AccountsPage() {
                   }
                   disabled={updating}
                 >
-                  <option value="household">Milik Bersama (Keluarga)</option>
+                  <option value="household">Milik Bersama</option>
                   <option value="personal">Milik Pribadi (cuma saya)</option>
                 </Select>
               </FormField>

@@ -106,6 +106,36 @@ func (h *BudgetHandler) ListBudgets(c fiber.Ctx) error {
 	return response.Success(c, fiber.StatusOK, "ok", responses)
 }
 
+// CopyFromPrevious godoc
+//
+//	@Summary		Copy budgets from the previous month (for categories not yet budgeted)
+//	@Tags			Budgets
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		dto.CopyBudgetRequest	true	"Target period"
+//	@Success		200		{object}	response.Envelope{data=dto.CopyBudgetResponse}
+//	@Failure		400		{object}	response.Envelope
+//	@Router			/budgets/copy-from-previous [post]
+//	@Security		BearerAuth
+func (h *BudgetHandler) CopyFromPrevious(c fiber.Ctx) error {
+	userID := c.Locals(middleware.LocalsUserID).(uuid.UUID)
+
+	var req dto.CopyBudgetRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, "Format request tidak valid")
+	}
+	if err := h.validator.Struct(req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, "Validasi gagal: "+err.Error())
+	}
+
+	copied, err := h.budgetUsecase.CopyFromPrevious(c.Context(), userID, req.Period)
+	if err != nil {
+		return mapBudgetErr(c, err)
+	}
+
+	return response.Success(c, fiber.StatusOK, "ok", dto.CopyBudgetResponse{Copied: copied})
+}
+
 // UpdateBudget godoc
 //
 //	@Summary		Update a budget's amount

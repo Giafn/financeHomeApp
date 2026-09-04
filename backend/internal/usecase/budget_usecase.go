@@ -157,3 +157,60 @@ func (u *BudgetUsecase) DeleteBudget(ctx context.Context, userID, budgetID uuid.
 
 	return u.budgetRepo.Delete(ctx, budgetID, member.HouseholdID)
 }
+
+// CopyFromPrevious menyalin budget dari periode sebelumnya ke period yang diberikan,
+// HANYA untuk kategori yang belum memiliki budget di period tersebut (idempotent —
+// kategori yang sudah di-set manual tidak ditimpa). Mengembalikan jumlah baris tersalin.
+// Mirip dengan job budget-auto-copy, tapi di-trigger manual oleh user lewat API.
+func (u *BudgetUsecase) CopyFromPrevious(ctx context.Context, userID uuid.UUID, period string) (int, error) {
+	if !periodPattern.MatchString(period) {
+		return 0, apperror.ErrInvalidPeriodFormat
+	}
+
+	member, err := u.householdRepo.FindMemberByUserID(ctx, userID)
+	if err != nil {
+		return 0, err
+	}
+
+	previousPeriod, err := cycleperiod.PreviousCyclePeriod(period)
+	if err != nil {
+		return 0, apperror.ErrInvalidPeriodFormat
+	}
+
+	prevBudgets, err := u.budgetRepo.ListRawByPeriod(ctx, member.HouseholdID, previousPeriod)
+	if err != nil {
+		return 0, err
+	}
+	if len(prevBudgets) == 0 {
+		return 0, nil
+	}
+
+	currentBudgets, err := u.budgetRepo.ListRawByPeriod(ctx, member.HouseholdID, period)
+	if err != nil {
+		return 0, err
+	}
+	existing := make(map[uuid.UUID]bool, len(currentBudgets))
+	for _, b := range currentBudgets {
+		existing[b.CategoryID] = true
+	}
+
+	copied := 0
+	for _, pb := range prevBudgets {
+		if existing[pb.CategoryID] {
+			continue
+		}
+		newBudget := &entity.Budget{
+			HouseholdID: member.HouseholdID,
+			CategoryID:  pb.CategoryID,
+			Period:      period,
+			Amount:      pb.Amount,
+			CreatedBy:   userID,
+		}
+		if err := u.budgetRepo.Create(ctx, newBudget); err != nil {
+			return 0, err
+		}
+		copied++
+	}
+
+	return copied, nil
+}
