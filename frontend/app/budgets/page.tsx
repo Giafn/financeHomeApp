@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiCall, ApiError } from '@/lib/api';
-import { Loader2, ChevronLeft, ChevronRight, Plus, Pencil, Trash2, Copy } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Plus, Pencil, Trash2, Copy, CalendarClock } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
@@ -54,6 +54,14 @@ function periodLabel(period: string) {
   return d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
 }
 
+function weeksLeftInfo(period: string) {
+  const now = new Date();
+  const [y, m] = period.split('-').map(Number);
+  if (y !== now.getFullYear() || m - 1 !== now.getMonth()) return null;
+  const daysLeft = new Date(y, m, 0).getDate() - now.getDate() + 1;
+  return { daysLeft, weeksLeft: Math.ceil(daysLeft / 7) };
+}
+
 function barColor(pct: number) {
   if (pct > 100) return 'bg-error';
   if (pct >= 80) return 'bg-warning';
@@ -79,6 +87,7 @@ export default function BudgetsPage() {
 
   const isPastPeriod = period < currentPeriod();
   const prevPeriod = shiftPeriod(period, -1);
+  const weeksInfo = weeksLeftInfo(period);
 
   const fetchBudgets = useCallback(async () => {
     setLoading(true);
@@ -259,6 +268,16 @@ export default function BudgetsPage() {
           </p>
         )}
 
+        {weeksInfo && budgets.length > 0 && (
+          <div className="flex items-center gap-2 bg-base-200 rounded-2xl px-4 py-3 mb-4">
+            <CalendarClock className="w-4 h-4 shrink-0 text-primary" />
+            <p className="text-xs text-base-content/60">
+              Sisa {weeksInfo.daysLeft} hari (± {weeksInfo.weeksLeft} minggu) sampai akhir {periodLabel(period)} —
+              sisa budget dibagi rata per minggu.
+            </p>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -285,51 +304,67 @@ export default function BudgetsPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {budgets.map((b) => (
-              <Card key={b.id} className="!p-5">
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div>
-                    <p className="font-semibold text-base-content">{b.category_name}</p>
-                    <p className="text-xs text-base-content/60">
-                      {formatCurrency(b.spent)} dari {formatCurrency(b.amount)}
-                    </p>
+            {budgets.map((b) => {
+              const remaining = b.amount - b.spent;
+              const weekly = weeksInfo && remaining > 0 ? remaining / weeksInfo.weeksLeft : null;
+              return (
+                <Card key={b.id} className="!p-5">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                      <p className="font-semibold text-base-content">{b.category_name}</p>
+                      <p className="text-xs text-base-content/60">
+                        {formatCurrency(b.spent)} dari {formatCurrency(b.amount)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <p
+                        className={`text-sm font-bold ${
+                          b.percentage > 100 ? 'text-error' : b.percentage >= 80 ? 'text-warning' : 'text-success'
+                        }`}
+                      >
+                        {b.percentage.toFixed(0)}%
+                      </p>
+                      {!isPastPeriod && (
+                        <>
+                          <button
+                            onClick={() => openEditModal(b)}
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-base-300 transition-colors ml-2"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(b)}
+                            disabled={updating}
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-full text-error hover:bg-error/10 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <p
-                      className={`text-sm font-bold ${
-                        b.percentage > 100 ? 'text-error' : b.percentage >= 80 ? 'text-warning' : 'text-success'
-                      }`}
-                    >
-                      {b.percentage.toFixed(0)}%
+
+                  <div className="w-full h-2.5 rounded-full bg-base-300 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${barColor(b.percentage)}`}
+                      style={{ width: `${Math.min(100, b.percentage)}%` }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 mt-3">
+                    <p className={`text-sm font-semibold ${remaining < 0 ? 'text-error' : 'text-success'}`}>
+                      Sisa {formatCurrency(Math.max(0, remaining))}
                     </p>
-                    {!isPastPeriod && (
-                      <>
-                        <button
-                          onClick={() => openEditModal(b)}
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-base-300 transition-colors ml-2"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(b)}
-                          disabled={updating}
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-full text-error hover:bg-error/10 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </>
+                    {weekly !== null && (
+                      <p className="text-xs text-base-content/60 flex items-center gap-1">
+                        <CalendarClock className="w-3.5 h-3.5 shrink-0" />
+                        ± {formatCurrency(weekly)}/minggu
+                      </p>
                     )}
                   </div>
-                </div>
-
-                <div className="w-full h-2.5 rounded-full bg-base-300 overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${barColor(b.percentage)}`}
-                    style={{ width: `${Math.min(100, b.percentage)}%` }}
-                  />
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
